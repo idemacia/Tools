@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "智能插座",
+  "navigationBarBackgroundColor": "#0F151D",
+  "usingComponents": {
+    "custom-header": "/components/header/header",
+    "device-card": "/components/device-card/device-card",
+    "control-card": "/components/control-card/control-card"
+  }
+}

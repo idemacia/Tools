@@ -1,0 +1,8 @@
+<view class="control-card {{bare ? 'control-card--bare' : ''}} {{inlineTitle ? 'control-card--inline' : ''}}">
+  <view class="control-card__row {{inlineTitle ? 'control-card__row--inline' : ''}}">
+    <view class="control-card__title" wx:if="{{title}}">{{title}}</view>
+    <view class="control-card__body">
+      <slot></slot>
+    </view>
+  </view>
+</view>

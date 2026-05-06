@@ -1,0 +1,46 @@
+.header {
+  height: 200rpx; /* 与页面padding-top保持一致 */
+  padding-top: env(safe-area-inset-top);
+  background-color: #0F151D;
+  display: flex;
+  align-items: flex-end;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  box-sizing: border-box;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  padding: 0 20rpx;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  left: 20rpx;
+}
+
+.back-btn image {
+  width: 40rpx;
+  height: 40rpx;
+  transform: rotate(180deg);
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: center;
+  width: 100%;
+  position: absolute;
+  left: 0;
+  bottom: 60rpx; /* 增加距离底部距离 */
+  line-height: 1.5; /* 优化行高 */
+  padding: 100 100rpx; /* 修正padding语法 */
+}

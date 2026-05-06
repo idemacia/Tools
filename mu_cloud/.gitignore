@@ -1,0 +1,25 @@
+# IDE
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# 微信小程序
+project.private.config.json
+
+# 依赖
+node_modules/
+
+# 构建输出
+miniprogram_npm/
+dist/
+
+# 日志
+*.log
+npm-debug.log*
+
+# 环境/密钥（勿提交敏感配置）
+.env
+.env.local
+*.pem

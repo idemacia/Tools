@@ -1,0 +1,25 @@
+// 阿里云IoT配置 - 复制为 iot-config.js 后填写；或运行时 wx.setStorageSync('iotConfig', {...})
+const config = {
+  productKey: wx.getStorageSync('productKey') || 'YOUR_PRODUCT_KEY',
+  accessKeyId: wx.getStorageSync('accessKeyId') || 'YOUR_ACCESS_KEY_ID',
+  accessKeySecret: wx.getStorageSync('accessKeySecret') || 'YOUR_ACCESS_KEY_SECRET',
+  endpoint: wx.getStorageSync('endpoint') || 'https://iot.cn-shanghai.aliyuncs.com',
+  deviceName: wx.getStorageSync('deviceName') || 'YOUR_DEVICE_NAME',
+  deviceNameSmartled: wx.getStorageSync('deviceNameSmartled') || undefined,
+  deviceNameSocket: wx.getStorageSync('deviceNameSocket') || undefined,
+  smartledUseInvokeThingService: false,
+  smartledThingServiceIdentifier: 'set',
+  socketThingServiceIdentifier: 'led_ctrl_data',
+  iotInstanceId: wx.getStorageSync('iotInstanceId') || undefined
+}
+
+try {
+  const prodConfig = wx.getStorageSync('iotConfig')
+  if (prodConfig) {
+    Object.assign(config, prodConfig)
+  }
+} catch (err) {
+  // 读取本地配置失败
+}
+
+module.exports = config

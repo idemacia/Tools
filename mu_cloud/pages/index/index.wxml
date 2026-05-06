@@ -1,0 +1,17 @@
+<view class="container">
+  <text class="title">阿里云IoT设备控制</text>
+  <text class="subtitle">选择设备类型</text>
+  
+  <view class="device-list">
+    <view 
+      class="device-card" 
+      wx:for="{{devices}}" 
+      wx:key="id"
+      bindtap="navigateToDevice"
+      data-path="{{item.path}}"
+    >
+      <image class="device-icon" src="{{item.icon}}" mode="aspectFit"></image>
+      <text class="device-name">{{item.name}}</text>
+    </view>
+  </view>
+</view>

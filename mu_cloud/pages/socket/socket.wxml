@@ -1,0 +1,103 @@
+<!-- 自定义头部 -->
+<custom-header title="智能插座" showBack="{{true}}"></custom-header>
+
+<!-- 页面容器 -->
+<view class="container">
+  <device-card image="{{device.image}}"  variant="socket" status="{{connectionStatus}}"></device-card>
+
+  <control-card title="插座控制">
+    <view class="control-row">
+      <!-- 左侧：图标+状态 -->
+      <view class="control-group">
+        <image 
+          class="socket-icon" 
+          src="{{socket.isOn ? '/images/icons/poweron.png' : '/images/icons/poweroff.png'}}"
+          mode="aspectFit"
+          bindtap="toggleSocket"
+        ></image>
+        <text class="socket-status">{{socket.isOn ? '已开启' : '已关闭'}}</text>
+      </view>
+      
+      <!-- 右侧：功率显示 -->
+      <view class="power-display">
+        <text class="power-value">{{socket.power}}</text>
+        <text class="power-unit">W</text>
+      </view>
+    </view>
+  </control-card>
+
+  <control-card title="电气参数" bare="{{true}}">
+  <view class="sensor-card">
+    <view class="sensor-grid">
+      <!-- 第一行 -->
+      <view class="sensor-row">
+        <view class="sensor-cell border-right-bottom">
+          <text class="sensor-label">电压</text>
+          <text class="sensor-value">{{socket.voltage}}<text class="sensor-unit">V</text></text>
+        </view>
+        <view class="sensor-cell border-bottom">
+          <text class="sensor-label">电流</text>
+          <text class="sensor-value">{{socket.current}}<text class="sensor-unit">A</text></text>
+        </view>
+      </view>
+      <!-- 第二行 -->
+      <view class="sensor-row">
+        <view class="sensor-cell border-right">
+          <text class="sensor-label">能耗</text>
+          <text class="sensor-value">{{socket.energy}}<text class="sensor-unit">kWh</text></text>
+        </view>
+        <view class="sensor-cell">
+          <text class="sensor-label">温度</text>
+          <text class="sensor-value">{{socket.temperature}}<text class="sensor-unit">°C</text></text>
+        </view>
+      </view>
+    </view>
+  </view>
+  </control-card>
+
+  <control-card title="定时控制">
+    <view class="timer-header">
+      <text class="timer-title">定时功能</text>
+      <switch checked="{{timer.isEnabled}}" bindchange="toggleTimer" color="#4CAF50"></switch>
+    </view>
+    
+    <view class="timer-content" hidden="{{!timer.isEnabled}}">
+      <!-- 时间设置 -->
+      <view class="time-setting">
+        <view class="time-item">
+          <text class="time-label">开始时间</text>
+          <picker mode="time" value="{{timer.startTime}}" bindchange="setStartTime">
+            <view class="time-picker">{{timer.startTime}}</view>
+          </picker>
+        </view>
+        <view class="time-item">
+          <text class="time-label">结束时间</text>
+          <picker mode="time" value="{{timer.endTime}}" bindchange="setEndTime">
+            <view class="time-picker">{{timer.endTime}}</view>
+          </picker>
+        </view>
+      </view>
+      
+      <!-- 日期选择 -->
+      <view class="day-selection">
+        <text class="day-label">重复日期</text>
+        <view class="day-buttons">
+          <view class="day-btn {{timer.days.indexOf(1) > -1 ? 'selected' : ''}}" 
+                bindtap="selectDay" data-day="1">一</view>
+          <view class="day-btn {{timer.days.indexOf(2) > -1 ? 'selected' : ''}}" 
+                bindtap="selectDay" data-day="2">二</view>
+          <view class="day-btn {{timer.days.indexOf(3) > -1 ? 'selected' : ''}}" 
+                bindtap="selectDay" data-day="3">三</view>
+          <view class="day-btn {{timer.days.indexOf(4) > -1 ? 'selected' : ''}}" 
+                bindtap="selectDay" data-day="4">四</view>
+          <view class="day-btn {{timer.days.indexOf(5) > -1 ? 'selected' : ''}}" 
+                bindtap="selectDay" data-day="5">五</view>
+          <view class="day-btn {{timer.days.indexOf(6) > -1 ? 'selected' : ''}}" 
+                bindtap="selectDay" data-day="6">六</view>
+          <view class="day-btn {{timer.days.indexOf(0) > -1 ? 'selected' : ''}}" 
+                bindtap="selectDay" data-day="0">日</view>
+        </view>
+      </view>
+    </view>
+  </control-card>
+</view> 

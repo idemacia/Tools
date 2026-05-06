@@ -1,0 +1,79 @@
+/* 与抽离前 .control-title + .control-card 一致；左右居中由 container padding 控制 */
+
+/* 普通模式：标题 + 卡片 */
+.control-card {
+  flex-shrink: 0;
+  display: block;
+  margin: 15px 0;
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: rgba(24, 32, 34, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.control-card:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* 原始 .control-title 样式 */
+.control-card__title {
+  font-size: 18px;
+  padding: 10px 10px 10px 15px;
+  color: rgba(254, 254, 252, 0.8);
+  text-align: left;
+  margin-left: -10px;
+  margin-right: auto;
+  margin-bottom: 10px;
+  display: block;
+  width: fit-content;
+}
+
+.control-card__body {
+  margin-top: 0;
+}
+
+.control-card__row {
+  display: block;
+}
+
+.control-card__row--inline {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.control-card__row--inline .control-card__title {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.control-card__row--inline .control-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* bare 模式：仅标题 + 插槽，无卡片背景（用于 sensor-card、scenes-card 等已是完整卡片的场景） */
+.control-card--bare {
+  flex-shrink: 0;
+  background-color: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 15px 0 0;
+}
+
+.control-card--bare .control-card__title {
+  margin-left: 10px;
+  margin-bottom: 8px;
+  padding: 10px 15px 0;
+}
+
+.control-card--bare .control-card__body {
+  margin: 0;
+}

@@ -1,0 +1,8 @@
+<view class="header">
+  <view class="header-content">
+    <view wx:if="{{showBack}}" class="back-btn" bindtap="handleBack">
+      <!-- <image src="/images/icons/arrow-right.png" mode="aspectFit"></image> -->
+    </view>
+    <text class="title">{{title}}</text>
+  </view>
+</view>

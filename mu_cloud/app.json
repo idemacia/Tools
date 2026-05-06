@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/smartled/smartled",
+    "pages/socket/socket"
+  ],
+  "window": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "阿里云IoT设备控制",
+    "navigationBarBackgroundColor": "#0F151D",
+    "navigationStyle": "custom"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "获取WiFi信息需要您的位置权限"
+    }
+  }
+}

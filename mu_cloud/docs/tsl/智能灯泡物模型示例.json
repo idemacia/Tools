@@ -1,0 +1,59 @@
+{
+  "schema": "https://iotx-tsl.oss-ap-southeast-1.aliyuncs.com/schema.json",
+  "profile": {
+    "version": "1.0",
+    "productKey": "YOUR_PRODUCT_KEY"
+  },
+  "properties": [
+    {
+      "identifier": "power",
+      "name": "开关状态",
+      "accessMode": "rw",
+      "dataType": { "type": "bool", "specs": { "0": "关", "1": "开" } }
+    },
+    {
+      "identifier": "brightness",
+      "name": "亮度",
+      "accessMode": "rw",
+      "dataType": { "type": "int", "specs": { "min": "0", "max": "100", "unit": "%" } }
+    },
+    {
+      "identifier": "hue",
+      "name": "色相",
+      "accessMode": "rw",
+      "dataType": { "type": "float", "specs": { "min": "0", "max": "360", "unit": "度" } }
+    },
+    {
+      "identifier": "saturation",
+      "name": "饱和度",
+      "accessMode": "rw",
+      "dataType": { "type": "float", "specs": { "min": "0", "max": "100", "unit": "%" } }
+    },
+    {
+      "identifier": "temperature",
+      "name": "色温",
+      "accessMode": "rw",
+      "dataType": { "type": "int", "specs": { "min": "2700", "max": "6500", "unit": "K" } }
+    },
+    {
+      "identifier": "online_status",
+      "name": "在线状态",
+      "accessMode": "r",
+      "dataType": { "type": "bool", "specs": { "0": "离线", "1": "在线" } }
+    }
+  ],
+  "services": [
+    {
+      "identifier": "set",
+      "name": "set",
+      "method": "thing.service.property.set",
+      "inputData": [
+        { "identifier": "power" },
+        { "identifier": "brightness" },
+        { "identifier": "hue" },
+        { "identifier": "saturation" },
+        { "identifier": "temperature" }
+      ]
+    }
+  ]
+}

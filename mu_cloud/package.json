@@ -1,0 +1,11 @@
+{
+  "name": "aliyun-iot-miniprogram",
+  "version": "1.0.0",
+  "description": "阿里云IoT设备控制 - 微信小程序开源版",
+  "dependencies": {
+    "@babel/runtime": "^7.27.6"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.4.3"
+  }
+}

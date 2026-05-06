@@ -1,0 +1,103 @@
+<!-- 自定义头部 -->
+<custom-header title="智能灯" showBack="{{true}}"></custom-header>
+
+<!-- 页面容器 -->
+<view class="container">
+  <device-card image="{{device.image}}"  status="{{connectionStatus}}"></device-card>
+
+  <control-card title="灯控制">
+    <view class="control-row">
+      <!-- 左侧：图标+状态 -->
+      <view class="control-group">
+        <image 
+          class="light-icon" 
+          src="{{light.isOn ? '/images/icons/poweron.png' : '/images/icons/poweroff.png'}}"
+          mode="aspectFit"
+          bindtap="toggleLight"
+        ></image>
+        <text class="light-status">{{light.isOn ? '已开启' : '已关闭'}}</text>
+      </view>
+      
+      <!-- 右侧：颜色预览 -->
+      <view class="color-preview" style="background-color: rgb({{currentColor.r}}, {{currentColor.g}}, {{currentColor.b}});">
+        <text class="color-text">当前颜色</text>
+      </view>
+    </view>
+  </control-card>
+
+  <control-card title="亮度控制" inlineTitle="{{true}}">
+    <view class="slider-group">
+      <text class="slider-label">亮度: {{light.brightness}}%</text>
+      <slider 
+        value="{{light.brightness}}" 
+        show-value="{{false}}"
+        bindchange="changeBrightness"
+        activeColor="#FFD700"
+        block-size="20"
+        block-color="#FFD700"
+        min="0"
+        max="100"
+      ></slider>
+    </view>
+  </control-card>
+
+  <control-card title="色相控制" inlineTitle="{{true}}">
+    <view class="slider-group">
+      <text class="slider-label">色相: {{light.hue}}°</text>
+      <slider 
+        value="{{light.hue}}" 
+        show-value="{{false}}"
+        bindchange="changeHue"
+        activeColor="#FF6B6B"
+        block-size="20"
+        block-color="#FF6B6B"
+        min="0"
+        max="360"
+      ></slider>
+    </view>
+  </control-card>
+
+  <control-card title="饱和度控制" inlineTitle="{{true}}">
+    <view class="slider-group">
+      <text class="slider-label">饱和度: {{light.saturation}}%</text>
+      <slider 
+        value="{{light.saturation}}" 
+        show-value="{{false}}"
+        bindchange="changeSaturation"
+        activeColor="#4ECDC4"
+        block-size="20"
+        block-color="#4ECDC4"
+        min="0"
+        max="100"
+      ></slider>
+    </view>
+  </control-card>
+
+  <control-card title="色温控制" inlineTitle="{{true}}">
+    <view class="slider-group">
+      <text class="slider-label">色温: {{light.temperature}}K</text>
+      <slider 
+        value="{{light.temperature}}" 
+        show-value="{{false}}"
+        bindchange="changeTemperature"
+        activeColor="#A8E6CF"
+        block-size="20"
+        block-color="#A8E6CF"
+        min="2700"
+        max="6500"
+      ></slider>
+    </view>
+  </control-card>
+
+  <control-card title="预设场景" bare="{{true}}">
+  <view class="scenes-card">
+    <view class="scenes-grid">
+      <view class="scene-item" wx:for="{{scenes}}" wx:key="name" bindtap="applyScene" data-scene-index="{{index}}">
+        <view class="scene-preview scene-preview-{{index}}">
+        </view>
+        <text class="scene-name">{{item.name}}</text>
+      </view>
+    </view>
+  </view>
+  </control-card>
+</view> 

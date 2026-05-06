@@ -1,0 +1,9 @@
+<view class="device-card device-card--{{variant}}">
+  <image class="device-card__image" src="{{image}}" mode="aspectFit"></image>
+  <view class="device-card__name">{{name}}</view>
+  <view class="device-card__status device-card__status--{{status}}" wx:if="{{status}}">
+    <text wx:if="{{status === 'connected'}}">阿里云已连接</text>
+    <text wx:elif="{{status === 'error'}}">请配置设备</text>
+    <text wx:else>未连接</text>
+  </view>
+</view>

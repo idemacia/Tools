@@ -1,0 +1,366 @@
+/* 
+ * 页面布局：覆盖 app.wxss 的 .container
+ * padding-top 预留固定头部空间；左右 padding 保证卡片居中、留边距
+ */
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 200rpx 24px 48rpx 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* 
+ * 全局样式
+ * 作用：设置整个页面的基础样式
+ */
+page {
+  background-color: rgb(15, 21, 29); /* 页面背景色：深蓝色 */
+  color: rgb(254, 254, 252); /* 默认文字颜色：浅灰色 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, 
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; /* 系统默认字体栈 */
+}
+
+/* 
+ * 卡片基础样式
+ * 作用：所有卡片的统一样式
+ */
+.card {
+  background-color: rgb(24, 32, 34); /* 卡片背景色 */
+  border-radius: 8px; /* 圆角半径 */
+  padding: 15px; /* 内边距 */
+  margin: 15px 80px 15px 20px; /* 外边距：减少右侧边距以增加宽度 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+  width: 45%; /* 增加卡片宽度 */
+  max-width: 550px; /* 增加最大宽度限制 */
+  margin-left: auto; /* 水平居中 */
+  margin-right: auto; /* 水平居中 */
+  position: relative;
+}
+
+.settings-btn {
+  position: absolute;
+  right: -80px; /* 调整位置，确保按钮完全显示 */
+  top: 70%;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(24, 32, 34, 0.7);
+  border-radius: 4px;
+  font-size: 10px;
+  color: rgba(254, 254, 252, 0.8);
+  backdrop-filter: blur(5px);
+  z-index: 10; /* 确保按钮在最上层 */
+}
+
+/* 
+ * 图片占位符
+ * 作用：设备图片占位区域
+ */
+.image-placeholder {
+  width: 80px; /* 设置合适的宽度 */
+  height: 80px; /* 设置合适的高度，保持正方形比例 */
+  border-radius: 8px; /* 圆角 */
+  overflow: hidden; /* 图片超出部分隐藏 */
+  margin: 0 auto; /* 水平居中 */
+  display: block; /* 块级显示 */
+}
+
+/* 
+ * 控制标题样式
+ * 作用：各个控制区域的标题
+ */
+.control-title {
+  font-size: 18px; /* 字体大小 */
+  padding: 10px 15px; /* 内边距 */
+  color: rgba(254, 254, 252, 0.8); /* 文字颜色：80%透明度 */
+  text-align: left; /* 文字左对齐 */
+  margin-left: 10px; /* 左侧外边距 */
+  margin-right: auto; /* 右侧自动外边距 */
+  display: block; /* 块级元素 */
+  width: fit-content; /* 宽度适应内容 */
+}
+
+/* 
+ * 控制卡片样式
+ * 作用：控制区域的卡片容器
+ */
+.control-card {
+  margin: 15px;
+  padding: 20px;
+  width: calc(100% - 70px);
+  background-color: rgba(24, 32, 34, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 
+ * 控制行布局
+ * 作用：控制区域的行布局
+ */
+.control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+/* 
+ * 控制组样式
+ * 作用：图标和状态的组合
+ */
+.control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+/* 
+ * 灯图标样式
+ * 作用：灯的开关图标
+ */
+.light-icon {
+  width: 30px;
+  height: 30px;
+  background-color: rgba(24, 32, 34, 0.1);
+  border-radius: 50%;
+  margin-bottom: 8px;
+}
+
+/* 
+ * 灯状态文字
+ * 作用：灯的状态显示
+ */
+.light-status {
+  font-size: 12px;
+  color: rgba(254, 254, 252, 0.8);
+}
+
+/* 
+ * 连接状态样式
+ * 作用：显示设备连接状态
+ */
+.connection-status {
+  margin: 12px auto 0;
+  font-size: 11px;
+  text-align: center;
+  padding: 3px 12px; /* 增加内边距 */
+  border-radius: 12px; /* 增加圆角 */
+  display: block;
+  width: fit-content; /* 确保宽度适应内容 */
+  font-weight: 500; /* 增加字体粗细 */
+}
+
+.connection-status.connecting {
+  color: #FFA726;
+  background-color: rgba(255, 167, 38, 0.1);
+  border: 1px solid rgba(255, 167, 38, 0.3);
+}
+
+.connection-status.connected {
+  color: #4CAF50;
+  background-color: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.connection-status.error {
+  color: #F44336;
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.connection-status.disconnected {
+  color: #9E9E9E;
+  background-color: rgba(158, 158, 158, 0.1);
+  border: 1px solid rgba(158, 158, 158, 0.3);
+}
+
+/* 
+ * 颜色预览区域
+ * 作用：显示当前灯的颜色
+ */
+.color-preview {
+  width: 80px;
+  height: 60px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 
+ * 颜色文字
+ * 作用：颜色预览区域的文字
+ */
+.color-text {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 
+ * 滑块组样式
+ * 作用：滑块控制区域
+ */
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 
+ * 滑块标签
+ * 作用：滑块的标签文字
+ */
+.slider-label {
+  font-size: 14px;
+  color: rgba(254, 254, 252, 0.9);
+  margin-bottom: 5px;
+}
+
+/* 
+ * 滑块自定义样式
+ */
+slider {
+  margin: 0;
+}
+
+/* 
+ * 场景卡片样式
+ * 作用：预设场景的卡片容器
+ */
+.scenes-card {
+  margin: 15px;
+  padding: 20px;
+  width: calc(100% - 70px);
+  background-color: rgba(24, 32, 34, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 
+ * 场景网格布局
+ * 作用：场景的网格排列
+ */
+.scenes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+/* 
+ * 场景项样式
+ * 作用：单个场景的样式
+ */
+.scene-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+/* 
+ * 场景项悬停效果
+ */
+.scene-item:active {
+  transform: scale(0.95);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 
+ * 场景预览
+ * 作用：场景的颜色预览
+ */
+.scene-preview {
+  width: 60px;
+  height: 40px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 暖光场景 */
+.scene-preview-0 {
+  background: linear-gradient(45deg, #FF8C42, #FFA726);
+}
+
+/* 冷光场景 */
+.scene-preview-1 {
+  background: linear-gradient(45deg, #42A5F5, #64B5F6);
+}
+
+/* 白光场景 */
+.scene-preview-2 {
+  background: linear-gradient(45deg, #FFFFFF, #F5F5F5);
+}
+
+/* 彩光场景 */
+.scene-preview-3 {
+  background: linear-gradient(45deg, #4CAF50, #66BB6A);
+}
+
+/* 
+ * 场景名称
+ * 作用：场景的名称文字
+ */
+.scene-name {
+  font-size: 12px;
+  color: rgba(254, 254, 252, 0.9);
+  text-align: center;
+}
+
+/* 
+ * 响应式设计
+ * 作用：适配不同屏幕尺寸
+ */
+@media (max-width: 600px) {
+  .scenes-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .scene-preview {
+    width: 50px;
+    height: 35px;
+  }
+  
+  .scene-name {
+    font-size: 11px;
+  }
+}
+
+/* 
+ * 动画效果
+ * 作用：添加一些微妙的动画
+ */
+.control-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.control-card:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* 
+ * 滑块激活状态
+ * 作用：滑块激活时的样式
+ */
+slider .wx-slider-handle {
+  transition: transform 0.1s ease;
+}
+
+slider .wx-slider-handle:active {
+  transform: scale(1.1);
+} 
