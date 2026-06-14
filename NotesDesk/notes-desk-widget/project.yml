@@ -1,0 +1,72 @@
+name: NotesDeskWidget
+options:
+  bundleIdPrefix: com.notesdesk
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_STYLE: Automatic
+    # 本地构建时在 Xcode 中设置 Signing Team，或在此填写你的 Team ID
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  NotesWidgetCore:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/NotesWidgetCore
+    settings:
+      PRODUCT_NAME: NotesWidgetCore
+      PRODUCT_BUNDLE_IDENTIFIER: com.notesdesk.widget.core
+      CODE_SIGN_ENTITLEMENTS: Config/WidgetCore.entitlements
+      DEFINES_MODULE: YES
+      GENERATE_INFOPLIST_FILE: YES
+      INSTALL_PATH: "$(LOCAL_LIBRARY_DIR)/Frameworks"
+      SKIP_INSTALL: YES
+  NotesDeskWidget:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/NotesWidgetHost
+    settings:
+      PRODUCT_NAME: NotesDeskWidget
+      PRODUCT_BUNDLE_IDENTIFIER: com.notesdesk.widget.host
+      CODE_SIGN_ENTITLEMENTS: Config/Host.entitlements
+      INFOPLIST_FILE: Config/Host-Info.plist
+      LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+    dependencies:
+      - target: NotesWidgetCore
+        embed: true
+      - target: NotesDeskWidgetExtension
+        embed: true
+      - sdk: Network.framework
+  NotesDeskWidgetExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: WidgetExtension
+      - path: Sources/NotesWidgetCore
+        excludes:
+          - "Services/NotesReader.swift"
+          - "Services/NotesWatcher.swift"
+          - "Services/NotesOpener.swift"
+          - "Utilities/HostSettings.swift"
+    settings:
+      PRODUCT_NAME: NotesDeskWidgetExtension
+      PRODUCT_BUNDLE_IDENTIFIER: com.notesdesk.widget.host.widget
+      CODE_SIGN_ENTITLEMENTS: Config/WidgetExtension.entitlements
+      INFOPLIST_FILE: WidgetExtension/Info.plist
+      SKIP_INSTALL: YES
+      APPLICATION_EXTENSION_API_ONLY: YES
+      LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
+schemes:
+  NotesDeskWidget:
+    build:
+      targets:
+        NotesDeskWidget: all
+    run:
+      config: Debug
+    archive:
+      config: Release

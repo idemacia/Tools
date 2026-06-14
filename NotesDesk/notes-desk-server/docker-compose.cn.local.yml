@@ -1,0 +1,9 @@
+# 已用 scripts/docker-pull-node.sh 预拉 node:22-bookworm-slim 后使用
+# docker compose -f docker-compose.yml -f docker-compose.cn.local.yml up -d --build
+
+services:
+  notesdesk:
+    build:
+      args:
+        NODE_IMAGE: node:22-bookworm-slim
+        NPM_REGISTRY: https://registry.npmmirror.com

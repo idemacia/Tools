@@ -1,0 +1,14 @@
+node_modules/
+web/node_modules/
+dist/
+web/dist/
+data/
+.env
+.env.*
+*.db
+*.db-wal
+*.db-shm
+*.log
+.DS_Store
+data/config/dingtalk.json
+data/config/llm.json

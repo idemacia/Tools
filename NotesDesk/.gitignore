@@ -1,0 +1,39 @@
+# 构建产物
+.build/
+.swiftpm/
+dist/
+web/dist/
+node_modules/
+web/node_modules/
+bin/
+obj/
+
+# 运行时数据与密钥（仅提交 *.example.json）
+data/
+**/Config/dingtalk.json
+**/Config/feishu.json
+**/Config/im.config.json
+data/config/dingtalk.json
+data/config/llm.json
+.env
+.env.*
+
+# 数据库
+*.db
+*.db-wal
+*.db-shm
+
+# macOS / IDE
+.DS_Store
+xcuserdata/
+*.xcuserstate
+NotesDeskWidget.xcodeproj/
+
+# 日志
+*.log
+
+# Docker 镜像包（请用 GitHub Releases 分发，勿提交 Git）
+*.tar
+*.tar.gz
+notesdesk-server.tar
+notesdesk-server.tar.gz

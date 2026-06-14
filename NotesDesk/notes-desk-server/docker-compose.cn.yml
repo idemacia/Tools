@@ -1,0 +1,18 @@
+# 国内 Mac / NAS：Docker Hub 超时时与 docker-compose.yml 一起使用
+#
+# 方式 1（DaoCloud 慢或卡住时，推荐先预拉镜像）：
+#   chmod +x scripts/docker-pull-node.sh
+#   ./scripts/docker-pull-node.sh 1          # 1panel 源，失败试 2 或 3
+#   docker compose -f docker-compose.yml -f docker-compose.cn.local.yml up -d --build
+#
+# 方式 2（直接指定镜像源 build）：
+#   NODE_IMAGE=docker.1panel.live/library/node:22-bookworm-slim \
+#   docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
+
+services:
+  notesdesk:
+    build:
+      args:
+        NODE_IMAGE: docker.1panel.live/library/node:22-bookworm-slim
+        NPM_REGISTRY: https://registry.npmmirror.com
+        APT_MIRROR: mirrors.aliyun.com

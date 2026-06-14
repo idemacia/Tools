@@ -1,0 +1,43 @@
+# NotesDesk Server — 群晖 Synology Container Manager
+#
+# 1. 将整个 notes-desk-server 目录上传到 NAS，或仅复制本文件 + Dockerfile 到：
+#    /volume1/docker/notesdesk/
+# 2. 创建数据目录并放入配置：
+#    /volume1/docker/notesdesk/data/config/dingtalk.json
+# 3. Container Manager → 项目 → 创建 → 路径选本文件 → 启动
+#
+# 访问：http://<NAS_IP>:8080/health
+
+services:
+  notesdesk:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # 若在 Apple Silicon Mac 上构建给 x86 群晖，取消下行注释：
+      # platforms: [linux/amd64]
+    image: notesdesk-server:latest
+    container_name: notesdesk
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Asia/Shanghai
+      DATA_DIR: /data
+      HOST: 0.0.0.0
+      PORT: 8080
+      # NOTESDESK_TOKEN: your-secret-token
+    volumes:
+      # 群晖共享目录 → 容器 /data（任务库、配置、备份）
+      - /volume1/docker/notesdesk/data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

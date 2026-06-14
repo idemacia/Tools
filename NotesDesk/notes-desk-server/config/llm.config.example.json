@@ -1,0 +1,9 @@
+{
+  "enabled": false,
+  "provider": "openai",
+  "baseUrl": "https://api.openai.com/v1",
+  "apiKey": "sk-xxxxxxxx",
+  "model": "gpt-4o-mini",
+  "maxTokens": 2048,
+  "temperature": 0.3
+}

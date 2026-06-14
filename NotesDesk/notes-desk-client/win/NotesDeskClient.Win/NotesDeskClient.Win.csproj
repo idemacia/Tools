@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>NotesDeskClient</AssemblyName>
+    <RootNamespace>NotesDeskClient.Win</RootNamespace>
+    <Version>1.0.0</Version>
+    <Product>NotesDesk Client</Product>
+    <Description>NAS API 瘦客户端 — 连接 notes-desk-server</Description>
+  </PropertyGroup>
+</Project>

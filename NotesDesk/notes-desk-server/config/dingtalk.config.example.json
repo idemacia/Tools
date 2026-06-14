@@ -1,0 +1,7 @@
+{
+  "clientId": "dingxxxxxxxx",
+  "clientSecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "debug": false,
+  "robotCode": "dingxxxxxxxx",
+  "reminderUserIds": ["staffId_of_yourself"]
+}

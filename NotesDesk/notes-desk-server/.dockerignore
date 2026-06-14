@@ -1,0 +1,12 @@
+node_modules
+dist
+data
+.git
+.gitignore
+.env
+*.md
+!docs/SYNOLOGY-SETUP.md
+*.db
+*.db-wal
+*.db-shm
+.DS_Store

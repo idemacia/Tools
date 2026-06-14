@@ -1,0 +1,30 @@
+{
+  "name": "notes-desk-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NotesDesk IM server — SQLite, DingTalk Stream, stats & LLM analysis",
+  "scripts": {
+    "dev": "npm run build && node --watch dist/index.js",
+    "watch": "tsc --watch",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "cors": "^2.8.5",
+    "dingtalk-stream-sdk-nodejs": "^2.0.4",
+    "express": "^4.21.2",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.3"
+  }
+}

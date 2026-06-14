@@ -1,0 +1,46 @@
+<UserControl x:Class="NotesDeskClient.Win.Controls.TaskRowControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Margin="0,2">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Button x:Name="ActionButton" Grid.Column="0" Width="24" Height="24"
+                VerticalAlignment="Top" Margin="0,2,8,0"
+                Click="ActionButton_Click"
+                Background="Transparent" BorderThickness="0" Cursor="Hand"/>
+        <StackPanel Grid.Column="1">
+            <TextBlock x:Name="TaskText" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <Border x:Name="DueBadge" CornerRadius="8" Padding="6,2" Margin="0,0,8,0" Visibility="Collapsed">
+                    <TextBlock x:Name="DueLabel" FontSize="11"/>
+                </Border>
+                <Button x:Name="DueButton" Content="设截止" FontSize="11"
+                        Click="DueButton_Click"
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="#888" Cursor="Hand" Padding="0"/>
+                <TextBlock x:Name="MetaLabel" FontSize="11" Foreground="#AAA" VerticalAlignment="Center"/>
+            </StackPanel>
+        </StackPanel>
+        <Popup x:Name="DuePopup" Placement="Bottom" StaysOpen="False">
+            <Border Background="White" BorderBrush="#CCC" BorderThickness="1" Padding="12" CornerRadius="8">
+                <StackPanel MinWidth="260">
+                    <TextBlock Text="截止时间" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <DatePicker x:Name="DueDatePicker"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="时" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="HourBox" Width="50" Margin="4,0"/>
+                        <TextBlock Text="分" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <ComboBox x:Name="MinuteBox" Width="50" Margin="4,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="清除" Margin="0,0,8,0" Click="ClearDue_Click"/>
+                        <Button Content="确定" IsDefault="True" Click="ConfirmDue_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>
