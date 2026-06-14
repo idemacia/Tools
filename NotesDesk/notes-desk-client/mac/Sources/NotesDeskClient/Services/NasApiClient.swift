@@ -52,6 +52,7 @@ struct PatchBody: Encodable {
 
 final class NasApiClient {
     static let shared = NasApiClient()
+    private static let sessionCookieName = "notesdesk_session"
 
     private let session: URLSession
     private let decoder: JSONDecoder
@@ -112,6 +113,67 @@ final class NasApiClient {
         }
     }
 
+    /// Web 登录，成功后写入 AppSettings.sessionCookie
+    func login(username: String, password: String) async throws {
+        struct Body: Encodable { let username: String; let password: String }
+        struct Ok: Decodable { let ok: Bool?; let username: String? }
+        struct Err: Decodable { let error: String? }
+
+        var req = URLRequest(url: try url(for: "/api/auth/login"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try encoder.encode(Body(username: username, password: password))
+
+        let (data, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse else { return }
+        guard http.statusCode == 200 else {
+            if let err = try? JSONDecoder().decode(Err.self, from: data), let msg = err.error {
+                throw NasApiError.httpStatus(http.statusCode, msg)
+            }
+            throw NasApiError.httpStatus(http.statusCode, String(data: data, encoding: .utf8) ?? "登录失败")
+        }
+
+        _ = try? JSONDecoder().decode(Ok.self, from: data)
+        let headerFields = http.allHeaderFields.reduce(into: [String: String]()) { fields, pair in
+            if let key = pair.key as? String, let value = pair.value as? String {
+                fields[key] = value
+            }
+        }
+        let cookies = HTTPCookie.cookies(withResponseHeaderFields: headerFields, for: req.url!)
+        if let sid = cookies.first(where: { $0.name == Self.sessionCookieName })?.value {
+            AppSettings.sessionCookie = sid
+            return
+        }
+        if let setCookie = http.value(forHTTPHeaderField: "Set-Cookie"),
+           let sid = parseSessionId(from: setCookie)
+        {
+            AppSettings.sessionCookie = sid
+            return
+        }
+        throw NasApiError.httpStatus(401, "登录成功但未收到 Session")
+    }
+
+    /// 401 时若已保存账号密码则自动重新登录
+    func ensureAuthenticated() async throws {
+        if AppSettings.hasApiAuth { return }
+        let user = AppSettings.webUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pass = AppSettings.webPassword
+        guard !user.isEmpty, !pass.isEmpty else {
+            throw NasApiError.httpStatus(401, "请在设置中填写 Web 用户名/密码，或配置 API Token")
+        }
+        try await login(username: user, password: pass)
+    }
+
+    private func parseSessionId(from setCookie: String) -> String? {
+        for part in setCookie.split(separator: ";") {
+            let s = part.trimmingCharacters(in: .whitespaces)
+            if s.hasPrefix("\(Self.sessionCookieName)=") {
+                return String(s.dropFirst(Self.sessionCookieName.count + 1))
+            }
+        }
+        return nil
+    }
+
     // MARK: - HTTP
 
     private func baseURL() throws -> URL {
@@ -131,24 +193,35 @@ final class NasApiClient {
     }
 
     private func get<T: Decodable>(_ path: String, auth: Bool) async throws -> T {
-        var req = URLRequest(url: try url(for: path))
-        if auth { addAuth(&req) }
-        let (data, resp) = try await session.data(for: req)
-        try validate(resp, data: data)
-        guard let decoded = try? decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
-        return decoded
+        if !auth {
+            let req = URLRequest(url: try url(for: path))
+            let (data, resp) = try await session.data(for: req)
+            try validate(resp, data: data)
+            guard let decoded = try? decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
+            return decoded
+        }
+        return try await requestWithAuthRetry {
+            var req = URLRequest(url: try url(for: path))
+            addAuth(&req)
+            let (data, resp) = try await session.data(for: req)
+            try validate(resp, data: data)
+            guard let decoded = try? decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
+            return decoded
+        }
     }
 
     private func patch<T: Decodable>(_ path: String, body: PatchBody) async throws -> T {
-        var req = URLRequest(url: try url(for: path))
-        req.httpMethod = "PATCH"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try encoder.encode(body)
-        addAuth(&req)
-        let (data, resp) = try await session.data(for: req)
-        try validate(resp, data: data)
-        guard let decoded = try? decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
-        return decoded
+        try await requestWithAuthRetry {
+            var req = URLRequest(url: try url(for: path))
+            req.httpMethod = "PATCH"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try encoder.encode(body)
+            addAuth(&req)
+            let (data, resp) = try await session.data(for: req)
+            try validate(resp, data: data)
+            guard let decoded = try? decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
+            return decoded
+        }
     }
 
     private func post<T: Decodable, B: Encodable>(_ path: String, body: B, auth: Bool) async throws -> T {
@@ -164,19 +237,40 @@ final class NasApiClient {
     }
 
     private func delete<T: Decodable>(_ path: String) async throws -> T {
-        var req = URLRequest(url: try url(for: path))
-        req.httpMethod = "DELETE"
-        addAuth(&req)
-        let (data, resp) = try await session.data(for: req)
-        try validate(resp, data: data)
-        guard let decoded = try? decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
-        return decoded
+        try await requestWithAuthRetry {
+            var req = URLRequest(url: try url(for: path))
+            req.httpMethod = "DELETE"
+            addAuth(&req)
+            let (data, resp) = try await session.data(for: req)
+            try validate(resp, data: data)
+            guard let decoded = try? decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
+            return decoded
+        }
+    }
+
+    private func requestWithAuthRetry<T>(_ work: () async throws -> T) async throws -> T {
+        do {
+            try await ensureAuthenticated()
+            return try await work()
+        } catch let err as NasApiError {
+            if case .httpStatus(401, _) = err {
+                AppSettings.sessionCookie = ""
+                try await ensureAuthenticated()
+                return try await work()
+            }
+            throw err
+        }
     }
 
     private func addAuth(_ req: inout URLRequest) {
         let token = AppSettings.apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
         if !token.isEmpty {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            return
+        }
+        let sid = AppSettings.sessionCookie.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !sid.isEmpty {
+            req.setValue("\(Self.sessionCookieName)=\(sid)", forHTTPHeaderField: "Cookie")
         }
     }
 

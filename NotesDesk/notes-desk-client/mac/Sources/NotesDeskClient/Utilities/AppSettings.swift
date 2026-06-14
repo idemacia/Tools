@@ -12,6 +12,9 @@ enum AppSettings {
         static let quitOnClosePanel = "quitOnClosePanel"
         static let serverBaseURL = "serverBaseURL"
         static let apiToken = "apiToken"
+        static let sessionCookie = "sessionCookie"
+        static let webUsername = "webUsername"
+        static let webPassword = "webPassword"
     }
 
     static var panelOpacity: Double {
@@ -89,6 +92,27 @@ enum AppSettings {
     static var apiToken: String {
         get { UserDefaults.standard.string(forKey: Key.apiToken) ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: Key.apiToken) }
+    }
+
+    /// Web 登录 Session（/api/auth/login 后写入）
+    static var sessionCookie: String {
+        get { UserDefaults.standard.string(forKey: Key.sessionCookie) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: Key.sessionCookie) }
+    }
+
+    static var webUsername: String {
+        get { UserDefaults.standard.string(forKey: Key.webUsername) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: Key.webUsername) }
+    }
+
+    static var webPassword: String {
+        get { UserDefaults.standard.string(forKey: Key.webPassword) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: Key.webPassword) }
+    }
+
+    static var hasApiAuth: Bool {
+        !apiToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !sessionCookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     static var isConfigured: Bool {

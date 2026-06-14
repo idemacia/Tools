@@ -12,3 +12,5 @@ data/
 .DS_Store
 data/config/dingtalk.json
 data/config/llm.json
+*.tar
+*.tar.gz

@@ -6,6 +6,8 @@ struct ConnectionSettingsSheet: View {
 
     @State private var serverURL = AppSettings.serverBaseURL
     @State private var apiToken = AppSettings.apiToken
+    @State private var webUsername = AppSettings.webUsername
+    @State private var webPassword = AppSettings.webPassword
     @State private var feedback = ""
     @State private var feedbackIsError = false
     @State private var isTesting = false
@@ -29,7 +31,14 @@ struct ConnectionSettingsSheet: View {
                         .foregroundStyle(.secondary)
 
                     labeledField("服务器地址", text: $serverURL, prompt: "http://192.168.1.100:8080")
-                    labeledField("API Token（可选）", text: $apiToken, prompt: "对应 NOTESDESK_TOKEN")
+
+                    Text("Web 登录（与浏览器相同，默认 admin / admin）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    labeledField("用户名", text: $webUsername, prompt: "admin")
+                    labeledSecureField("密码", text: $webPassword)
+
+                    labeledField("API Token（可选）", text: $apiToken, prompt: "Docker 环境变量 NOTESDESK_TOKEN")
 
                     HStack {
                         Button {
@@ -78,7 +87,14 @@ struct ConnectionSettingsSheet: View {
             }
             .padding(20)
         }
-        .frame(width: 420, height: 480)
+        .frame(width: 420, height: 560)
+    }
+
+    private func labeledSecureField(_ title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            SecureField("", text: text).textFieldStyle(.roundedBorder)
+        }
     }
 
     private func labeledField(_ title: String, text: Binding<String>, prompt: String = "") -> some View {
@@ -93,12 +109,22 @@ struct ConnectionSettingsSheet: View {
         defer { isTesting = false }
         let prevURL = AppSettings.serverBaseURL
         let prevToken = AppSettings.apiToken
+        let prevUser = AppSettings.webUsername
+        let prevPass = AppSettings.webPassword
+        let prevSession = AppSettings.sessionCookie
         AppSettings.serverBaseURL = serverURL
         AppSettings.apiToken = apiToken
+        AppSettings.webUsername = webUsername
+        AppSettings.webPassword = webPassword
+        AppSettings.sessionCookie = ""
         do {
             let health = try await NasApiClient.shared.health()
+            if apiToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                try await NasApiClient.shared.login(username: webUsername, password: webPassword)
+            }
+            _ = try await NasApiClient.shared.listTasks(status: "incomplete")
             feedback = health.ok
-                ? (health.bridge ? "连接成功 · 钉钉桥在线" : "连接成功 · 钉钉桥未启动")
+                ? (health.bridge ? "连接成功 · 已登录 · 钉钉桥在线" : "连接成功 · 已登录 · 钉钉桥未启动")
                 : "服务器返回异常"
             feedbackIsError = !health.ok
         } catch {
@@ -107,14 +133,32 @@ struct ConnectionSettingsSheet: View {
         }
         AppSettings.serverBaseURL = prevURL
         AppSettings.apiToken = prevToken
+        AppSettings.webUsername = prevUser
+        AppSettings.webPassword = prevPass
+        AppSettings.sessionCookie = prevSession
     }
 
     private func saveAndRefresh() {
         AppSettings.serverBaseURL = serverURL
         AppSettings.apiToken = apiToken
-        feedback = "已保存"
+        AppSettings.webUsername = webUsername
+        AppSettings.webPassword = webPassword
+        AppSettings.sessionCookie = ""
+        feedback = "已保存，正在登录…"
         feedbackIsError = false
-        Task { await viewModel.refreshFromServer() }
+        Task {
+            do {
+                if apiToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    try await NasApiClient.shared.login(username: webUsername, password: webPassword)
+                }
+                feedback = "已保存并登录"
+                feedbackIsError = false
+                await viewModel.refreshFromServer()
+            } catch {
+                feedback = error.localizedDescription
+                feedbackIsError = true
+            }
+        }
     }
 
     private func statItem(_ title: String, _ value: Int) -> some View {
