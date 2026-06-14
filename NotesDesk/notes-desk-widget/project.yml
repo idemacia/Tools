@@ -20,7 +20,6 @@ targets:
     settings:
       PRODUCT_NAME: NotesWidgetCore
       PRODUCT_BUNDLE_IDENTIFIER: com.notesdesk.widget.core
-      CODE_SIGN_ENTITLEMENTS: Config/WidgetCore.entitlements
       DEFINES_MODULE: YES
       GENERATE_INFOPLIST_FILE: YES
       INSTALL_PATH: "$(LOCAL_LIBRARY_DIR)/Frameworks"

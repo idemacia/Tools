@@ -52,5 +52,9 @@ xcodebuild \
 
 echo ""
 echo "Build complete."
-echo "Run Host separately: ./run-host.sh"
-echo "Or launch from Xcode with ⌘R."
+echo ""
+echo "请用 Xcode 按 ⌘R 运行（推荐），或执行："
+echo "  open \"\$(find ~/Library/Developer/Xcode/DerivedData/NotesDeskWidget-*/Build/Products/Debug -name NotesDeskWidget.app -maxdepth 1 2>/dev/null | head -1)\""
+echo ""
+echo "⚠  不要打开 DerivedData/.../Index.noindex/ 下的 .app（无可执行文件，会报「无法打开」）。"
+echo "Run Host only (no Widget sync): ./run-host.sh"
