@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:NotesDeskClient.Win.Controls"
         Title="NotesDesk Client"
-        Width="400" Height="540"
-        MinWidth="320" MinHeight="280"
+        Width="400" Height="680"
+        MinWidth="320" MinHeight="360"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -16,6 +16,7 @@
             Opacity="{Binding PanelOpacity}">
         <Grid>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -52,19 +53,40 @@
                 </Ellipse>
             </Grid>
 
-            <Grid Grid.Row="1" Margin="16,0,16,8">
+            <StackPanel Grid.Row="1" Margin="16,0,16,8">
+                <local:DayCalendarControl x:Name="DayCalendar"
+                                          DaySelected="DayCalendar_DaySelected"
+                                          TodayRequested="DayCalendar_TodayRequested"
+                                          ClearRequested="DayCalendar_ClearRequested"
+                                          MonthChanged="DayCalendar_MonthChanged"/>
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="SearchBox" Grid.Column="0" Margin="0,0,8,0"
+                             TextChanged="SearchBox_TextChanged"
+                             ToolTip="搜索任务或评论…"/>
+                    <Button Grid.Column="1" Content="清除" Click="ClearSearch_Click" Padding="8,2"
+                            FontSize="11" Background="Transparent" BorderThickness="0" Foreground="#888"/>
+                </Grid>
+            </StackPanel>
+
+            <Grid Grid.Row="2" Margin="16,0,16,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="NewTaskBox" Grid.Column="0" Margin="0,0,8,0"
-                         KeyDown="NewTaskBox_KeyDown"/>
-                <Button Grid.Column="1" Content="添加" Click="AddTask_Click" Padding="12,4"/>
+                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="28" MaxHeight="72"
+                         VerticalScrollBarVisibility="Auto"
+                         ToolTip="多条可换行；点击添加提交"/>
+                <Button Grid.Column="1" Content="添加" Click="AddTask_Click" Padding="12,4" VerticalAlignment="Bottom"/>
             </Grid>
 
-            <Separator Grid.Row="2" Margin="16,0" Opacity="0.4"/>
+            <Separator Grid.Row="3" Margin="16,0" Opacity="0.4"/>
 
-            <ScrollViewer Grid.Row="3" Margin="16,8" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Row="4" Margin="16,8" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                     <ItemsControl ItemsSource="{Binding IncompleteTasks}">
                         <ItemsControl.ItemTemplate>
@@ -73,7 +95,8 @@
                                                       FontSize="{Binding DataContext.FontSize, RelativeSource={RelativeSource AncestorType=Window}}"
                                                       CompleteRequested="TaskRow_CompleteRequested"
                                                       UncompleteRequested="TaskRow_UncompleteRequested"
-                                                      DueDateChanged="TaskRow_DueDateChanged"/>
+                                                      DueDateChanged="TaskRow_DueDateChanged"
+                                                      CommentsRequested="TaskRow_CommentsRequested"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -97,13 +120,14 @@
                                                           FontSize="{Binding DataContext.FontSize, RelativeSource={RelativeSource AncestorType=Window}}"
                                                           CompleteRequested="TaskRow_CompleteRequested"
                                                           UncompleteRequested="TaskRow_UncompleteRequested"
-                                                          DueDateChanged="TaskRow_DueDateChanged"/>
+                                                          DueDateChanged="TaskRow_DueDateChanged"
+                                                          CommentsRequested="TaskRow_CommentsRequested"/>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
 
-                    <TextBlock Text="暂无待办&#x0a;&#x0a;手机钉钉发消息到 NAS，或上方输入框添加。"
+                    <TextBlock Text="暂无待办&#x0a;&#x0a;手机钉钉发消息到 NAS，或上方输入框添加。&#x0a;多条可换行发送。"
                                Visibility="{Binding ShowEmptyPlaceholder, RelativeSource={RelativeSource AncestorType=Window}}"
                                TextWrapping="Wrap" Foreground="#888" Margin="0,4"/>
                 </StackPanel>

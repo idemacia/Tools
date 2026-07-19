@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using NotesDeskClient.Win.Models;
+using NotesDeskClient.Win.ViewModels;
 
 namespace NotesDeskClient.Win.Controls;
 
@@ -17,6 +18,10 @@ public partial class TaskRowControl : UserControl
 
     public static readonly RoutedEvent DueDateChangedEvent =
         EventManager.RegisterRoutedEvent(nameof(DueDateChanged), RoutingStrategy.Bubble,
+            typeof(RoutedEventHandler), typeof(TaskRowControl));
+
+    public static readonly RoutedEvent CommentsRequestedEvent =
+        EventManager.RegisterRoutedEvent(nameof(CommentsRequested), RoutingStrategy.Bubble,
             typeof(RoutedEventHandler), typeof(TaskRowControl));
 
     public static readonly DependencyProperty TaskItemProperty =
@@ -49,6 +54,12 @@ public partial class TaskRowControl : UserControl
         remove => RemoveHandler(DueDateChangedEvent, value);
     }
 
+    public event RoutedEventHandler CommentsRequested
+    {
+        add => AddHandler(CommentsRequestedEvent, value);
+        remove => RemoveHandler(CommentsRequestedEvent, value);
+    }
+
     public DeskTask? TaskItem
     {
         get => (DeskTask?)GetValue(TaskItemProperty);
@@ -72,11 +83,20 @@ public partial class TaskRowControl : UserControl
         InitializeComponent();
         for (var h = 0; h < 24; h++) HourBox.Items.Add(h.ToString("00"));
         for (var m = 0; m < 60; m += 5) MinuteBox.Items.Add(m.ToString("00"));
+        DataContextChanged += (_, _) => RefreshUI();
     }
 
     private static void OnTaskChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is TaskRowControl control) control.RefreshUI();
+    }
+
+    private int ResolveCommentCount()
+    {
+        if (TaskItem == null) return 0;
+        if (Window.GetWindow(this)?.DataContext is DeskViewModel vm)
+            return vm.CommentCountFor(TaskItem.Id);
+        return 0;
     }
 
     private void RefreshUI()
@@ -98,14 +118,18 @@ public partial class TaskRowControl : UserControl
         {
             DueBadge.Visibility = Visibility.Visible;
             DueLabel.Text = $"{task.DueDate.Value:M/d HH:mm} 截止";
-            var color = IsCompletedMode ? Brushes.Gray : task.IsOverdue() ? Brushes.Red : Brushes.Orange;
-            DueBadge.Background = new SolidColorBrush(Color.FromArgb(40, color.R, color.G, color.B));
-            DueLabel.Foreground = color;
+            var brush = (SolidColorBrush)(IsCompletedMode ? Brushes.Gray : task.IsOverdue() ? Brushes.Red : Brushes.Orange);
+            DueBadge.Background = new SolidColorBrush(Color.FromArgb(40, brush.Color.R, brush.Color.G, brush.Color.B));
+            DueLabel.Foreground = brush;
         }
         else DueBadge.Visibility = Visibility.Collapsed;
 
         DueButton.Visibility = IsCompletedMode ? Visibility.Collapsed : Visibility.Visible;
         DueButton.Content = task.DueDate.HasValue ? "改截止" : "设截止";
+
+        var count = ResolveCommentCount();
+        CommentsButton.Content = count > 0 ? $"评论 {count}" : "评论";
+        CommentsButton.Foreground = count > 0 ? Brushes.Orange : Brushes.Gray;
 
         var time = IsCompletedMode
             ? (task.CompletedAt ?? task.CreatedAt).ToString("HH:mm")
@@ -125,6 +149,9 @@ public partial class TaskRowControl : UserControl
         RaiseEvent(new RoutedEventArgs(
             IsCompletedMode ? UncompleteRequestedEvent : CompleteRequestedEvent, this));
     }
+
+    private void CommentsButton_Click(object sender, RoutedEventArgs e) =>
+        RaiseEvent(new RoutedEventArgs(CommentsRequestedEvent, this));
 
     private void DueButton_Click(object sender, RoutedEventArgs e)
     {

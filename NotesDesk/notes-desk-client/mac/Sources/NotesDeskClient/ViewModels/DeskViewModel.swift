@@ -16,6 +16,14 @@ final class DeskViewModel: ObservableObject {
         didSet { AppSettings.quitOnClosePanel = quitOnClosePanel }
     }
     @Published var showSettings = false
+    @Published var settingsTab: SettingsTab = .connection
+    @Published var filterDate: String? = nil
+    @Published var searchQuery: String = ""
+    @Published var commentsTask: DeskTask? = nil
+    /// 当前月历月份内的色点标记
+    @Published var calendarMarks = CalendarDayMarks()
+    @Published var commentCounts: [String: Int] = [:]
+    private var calendarMonth: String = String(StatsDateHelper.dayString().prefix(7))
     @Published var viewMode: DeskViewMode {
         didSet {
             AppSettings.viewMode = viewMode
@@ -87,20 +95,61 @@ final class DeskViewModel: ObservableObject {
                 statusMessage = "NAS 已连接 · 钉钉桥未启动"
             }
 
-            let viewParam = viewMode == .today ? "today" : nil
-            allIncomplete = try await api.listTasks(view: viewParam, status: "incomplete")
-            let completedLimit = viewMode == .history ? 200 : 30
-            allCompleted = try await api.listTasks(status: "completed")
-            allCompleted = Array(
-                allCompleted
-                    .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
-                    .prefix(completedLimit)
-            )
+            let viewParam = viewMode == .today && filterDate == nil ? "today" : nil
+            let q = searchQuery.isEmpty ? nil : searchQuery
+            var counts: [String: Int] = [:]
+            if let q {
+                // 有搜索词：全库搜索（含已完成），忽略日期与「今日」视图
+                let res = try await api.listTasks(q: q, includeCompleted: true)
+                allIncomplete = res.tasks.filter { !$0.isCompleted }
+                allCompleted = res.tasks.filter(\.isCompleted)
+                counts = res.commentCounts
+            } else if let filterDate {
+                let res = try await api.listTasks(
+                    date: filterDate,
+                    includeCompleted: true
+                )
+                allIncomplete = res.tasks.filter { !$0.isCompleted }
+                allCompleted = res.tasks.filter(\.isCompleted)
+                counts = res.commentCounts
+            } else {
+                let incompleteRes = try await api.listTasks(
+                    view: viewParam,
+                    status: "incomplete"
+                )
+                allIncomplete = incompleteRes.tasks
+                counts = incompleteRes.commentCounts
+                let completedLimit = viewMode == .history ? 200 : 30
+                let completedRes = try await api.listTasks(status: "completed")
+                allCompleted = Array(
+                    completedRes.tasks
+                        .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
+                        .prefix(completedLimit)
+                )
+                for (k, v) in completedRes.commentCounts { counts[k] = v }
+            }
+            commentCounts = counts
             applyLists()
+            await loadCalendarDays(month: calendarMonth)
         } catch {
             serverConnected = false
             bridgeConnected = false
             statusMessage = error.localizedDescription
+        }
+    }
+
+    func setCalendarMonth(_ month: String) {
+        guard month != calendarMonth else { return }
+        calendarMonth = month
+        Task { await loadCalendarDays(month: month) }
+    }
+
+    private func loadCalendarDays(month: String) async {
+        guard AppSettings.isConfigured else { return }
+        do {
+            calendarMarks = try await api.calendarDays(month: month)
+        } catch {
+            // 月历色点失败不阻断列表
         }
     }
 
@@ -174,7 +223,7 @@ final class DeskViewModel: ObservableObject {
         }
     }
 
-    func dailyStats(on day: Date = Date()) -> TaskPeriodStats {
+    func dailyStats(on day: Date = Date()) -> LocalDailyStats {
         let start = calendar.startOfDay(for: day)
         let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
         let tasks = (allIncomplete + allCompleted).filter { task in
@@ -183,7 +232,7 @@ final class DeskViewModel: ObservableObject {
             return createdIn || dueIn
         }
         let completed = tasks.filter(\.isCompleted).count
-        return TaskPeriodStats(
+        return LocalDailyStats(
             periodStart: start,
             periodEnd: end,
             planned: tasks.count,
@@ -199,6 +248,10 @@ final class DeskViewModel: ObservableObject {
     }
 
     private func filteredIncompleteTasks() -> [DeskTask] {
+        // 搜索结果已是全库命中，勿再按「今日」裁剪
+        if !searchQuery.isEmpty {
+            return allIncomplete
+        }
         switch viewMode {
         case .incomplete, .history:
             return allIncomplete
@@ -212,6 +265,16 @@ final class DeskViewModel: ObservableObject {
     }
 
     private func updateTitle() {
+        if !searchQuery.isEmpty {
+            let count = incompleteTasks.count + completedTasks.count
+            displayTitle = "搜索「\(searchQuery)」（\(count)）"
+            return
+        }
+        if let filterDate {
+            let count = incompleteTasks.count + completedTasks.count
+            displayTitle = "\(filterDate)（\(count)）"
+            return
+        }
         switch viewMode {
         case .incomplete, .today:
             let count = incompleteTasks.count

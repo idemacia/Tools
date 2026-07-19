@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using NotesDeskClient.Win.Controls;
 using NotesDeskClient.Win.Models;
 using NotesDeskClient.Win.Services;
@@ -13,20 +14,25 @@ namespace NotesDeskClient.Win;
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
     private readonly DeskViewModel _viewModel;
+    private readonly DispatcherTimer _searchDebounce = new() { Interval = TimeSpan.FromMilliseconds(250) };
 
     public MainWindow(DeskViewModel viewModel)
     {
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
-        _viewModel.PropertyChanged += (_, args) =>
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _searchDebounce.Tick += (_, _) =>
         {
-            if (args.PropertyName is nameof(DeskViewModel.IncompleteTasks)
-                or nameof(DeskViewModel.CompletedTasks)
-                or nameof(DeskViewModel.ShowCompletedSection))
-                NotifyEmptyStateChanged();
+            _searchDebounce.Stop();
+            _viewModel.ApplySearch(SearchBox.Text);
         };
         Closing += MainWindow_Closing;
+        Loaded += (_, _) =>
+        {
+            DayCalendar.SelectedDay = _viewModel.FilterDate;
+            DayCalendar.SetMarks(_viewModel.CalendarMarks);
+        };
         NotifyEmptyStateChanged();
     }
 
@@ -48,6 +54,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public string CompletedToggleLabel => _viewModel.ShowCompletedSection ? "隐藏" : "显示";
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(DeskViewModel.IncompleteTasks)
+            or nameof(DeskViewModel.CompletedTasks)
+            or nameof(DeskViewModel.ShowCompletedSection)
+            or nameof(DeskViewModel.CommentCounts))
+            NotifyEmptyStateChanged();
+
+        if (args.PropertyName == nameof(DeskViewModel.CalendarMarks))
+            DayCalendar.SetMarks(_viewModel.CalendarMarks);
+
+        if (args.PropertyName == nameof(DeskViewModel.FilterDate))
+            DayCalendar.SelectedDay = _viewModel.FilterDate;
+    }
 
     private void NotifyEmptyStateChanged()
     {
@@ -88,15 +109,38 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void ToggleCompleted_Click(object sender, RoutedEventArgs e) =>
         _viewModel.ShowCompletedSection = !_viewModel.ShowCompletedSection;
 
-    private async void AddTask_Click(object sender, RoutedEventArgs e)
+    private void DayCalendar_DaySelected(object sender, RoutedEventArgs e)
     {
-        await _viewModel.AddTaskAsync(NewTaskBox.Text);
-        NewTaskBox.Clear();
+        if (sender is DayCalendarControl { Tag: string day })
+            _viewModel.FilterDate = day;
     }
 
-    private async void NewTaskBox_KeyDown(object sender, KeyEventArgs e)
+    private void DayCalendar_TodayRequested(object sender, RoutedEventArgs e) =>
+        _viewModel.FilterDate = ShanghaiTime.DayString();
+
+    private void DayCalendar_ClearRequested(object sender, RoutedEventArgs e) =>
+        _viewModel.FilterDate = null;
+
+    private void DayCalendar_MonthChanged(object sender, RoutedEventArgs e)
     {
-        if (e.Key != Key.Enter) return;
+        if (sender is DayCalendarControl cal)
+            _viewModel.SetCalendarMonth(cal.MonthKey);
+    }
+
+    private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        _searchDebounce.Stop();
+        _searchDebounce.Start();
+    }
+
+    private void ClearSearch_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Clear();
+        _viewModel.ApplySearch("");
+    }
+
+    private async void AddTask_Click(object sender, RoutedEventArgs e)
+    {
         await _viewModel.AddTaskAsync(NewTaskBox.Text);
         NewTaskBox.Clear();
     }
@@ -115,7 +159,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void TaskRow_DueDateChanged(object sender, RoutedEventArgs e)
     {
-        if (sender is TaskRowControl { TaskItem: { } task })
-            await _viewModel.SetDueDateAsync(task.Id, sender is TaskRowControl row ? row.Tag as DateTime? : null);
+        if (sender is TaskRowControl { TaskItem: { } task } row)
+            await _viewModel.SetDueDateAsync(task.Id, row.Tag as DateTime?);
+    }
+
+    private async void TaskRow_CommentsRequested(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TaskRowControl { TaskItem: { } task }) return;
+        var win = new CommentsWindow(task) { Owner = this };
+        win.ShowDialog();
+        await _viewModel.RefreshFromServerAsync();
     }
 }

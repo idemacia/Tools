@@ -40,6 +40,28 @@ public sealed class DeskTask
     }
 }
 
+public sealed class TaskComment
+{
+    public string Id { get; set; } = "";
+    public string TaskId { get; set; } = "";
+    public string Body { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public sealed class CalendarDayMarks
+{
+    public Dictionary<string, int> Created { get; set; } = new();
+    public Dictionary<string, int> Incomplete { get; set; } = new();
+    public Dictionary<string, int> Completed { get; set; } = new();
+}
+
+public sealed class TaskListResult
+{
+    public List<DeskTask> Tasks { get; set; } = new();
+    public Dictionary<string, int> CommentCounts { get; set; } = new();
+}
+
 public sealed class TaskPeriodStats
 {
     public int Planned { get; init; }
@@ -62,4 +84,50 @@ public static class DeskViewModeExtensions
         DeskViewMode.History => "历史",
         _ => mode.ToString()
     };
+}
+
+/// <summary>Asia/Shanghai 日历日 YYYY-MM-DD。</summary>
+public static class ShanghaiTime
+{
+    private static readonly TimeZoneInfo Tz = ResolveTz();
+
+    private static TimeZoneInfo ResolveTz()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("China Standard Time"); }
+        catch
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Shanghai"); }
+            catch { return TimeZoneInfo.Local; }
+        }
+    }
+
+    public static string DayString(DateTime? utcOrLocal = null)
+    {
+        var src = utcOrLocal ?? DateTime.UtcNow;
+        var utc = src.Kind switch
+        {
+            DateTimeKind.Utc => src,
+            DateTimeKind.Local => src.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(src, DateTimeKind.Utc)
+        };
+        var local = TimeZoneInfo.ConvertTimeFromUtc(utc, Tz);
+        return local.ToString("yyyy-MM-dd");
+    }
+
+    public static string MonthString(DateTime? utcOrLocal = null) =>
+        DayString(utcOrLocal)[..7];
+
+    public static DateTime? FromDayString(string day)
+    {
+        if (!DateTime.TryParseExact(day, "yyyy-MM-dd", null,
+                System.Globalization.DateTimeStyles.None, out var d))
+            return null;
+        return d;
+    }
+
+    public static string ShiftDay(string day, int delta)
+    {
+        var d = FromDayString(day) ?? DateTime.Today;
+        return d.AddDays(delta).ToString("yyyy-MM-dd");
+    }
 }

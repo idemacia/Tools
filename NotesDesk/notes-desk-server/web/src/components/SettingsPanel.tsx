@@ -47,6 +47,8 @@ export function SettingsPanel({ username, onUsernameChange, onLogout }: Props) {
   const [newUsername, setNewUsername] = useState(username);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [exportFrom, setExportFrom] = useState('');
+  const [exportTo, setExportTo] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -181,13 +183,26 @@ export function SettingsPanel({ username, onUsernameChange, onLogout }: Props) {
     }
   };
 
+  const exportRange = () => {
+    const from = exportFrom.trim() || undefined;
+    const to = exportTo.trim() || undefined;
+    if (from && to && from > to) {
+      flash('开始日期不能晚于结束日期', true);
+      return null;
+    }
+    return { from, to };
+  };
+
   const exportJson = async () => {
     try {
-      const blob = await api.exportJsonBlob();
+      const range = exportRange();
+      if (range === null) return;
+      const blob = await api.exportJsonBlob(range);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `tasks-${new Date().toISOString().slice(0, 10)}.json`;
+      const tag = [range.from, range.to].filter(Boolean).join('_') || 'all';
+      a.download = `tasks-${tag}.json`;
       a.click();
       URL.revokeObjectURL(url);
       flash('JSON 已下载');
@@ -199,14 +214,20 @@ export function SettingsPanel({ username, onUsernameChange, onLogout }: Props) {
   const importJsonFile = async (file: File) => {
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text) as { tasks?: DeskTask[] } | DeskTask[];
-      const tasks = Array.isArray(parsed) ? parsed : parsed.tasks;
-      if (!tasks?.length) {
+      const parsed = JSON.parse(text) as
+        | { tasks?: DeskTask[]; comments?: unknown[] }
+        | DeskTask[];
+      const payload = Array.isArray(parsed)
+        ? { tasks: parsed }
+        : { tasks: parsed.tasks ?? [], comments: parsed.comments };
+      if (!payload.tasks?.length) {
         flash('文件中没有 tasks 数组', true);
         return;
       }
-      const r = await api.importTasks(tasks);
-      flash(`已导入 ${r.imported} 条（共 ${r.total} 条）`);
+      const r = await api.importTasks(payload);
+      flash(
+        `已导入任务 ${r.imported}/${r.total}，评论 ${r.commentsImported}/${r.commentsTotal}`,
+      );
     } catch (e) {
       flash(e instanceof Error ? e.message : String(e), true);
     }
@@ -441,13 +462,50 @@ export function SettingsPanel({ username, onUsernameChange, onLogout }: Props) {
       <section className="mb-8 space-y-3 rounded-xl border border-black/5 p-5">
         <h3 className="font-medium">数据导入 / 导出</h3>
         <p className="text-xs text-text-secondary">
-          导出备份任务；从桌面版 tasks.json 导入时使用 JSON（格式为 {'{ tasks: [...] }'} 或数组）。
+          按任务创建日期筛选导出（留空=全部）；JSON/CSV 均含评论。导入支持{' '}
+          {'{ tasks, comments }'} 或任务内嵌 comments。
         </p>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-2">
+            <span className="text-text-secondary">从</span>
+            <input
+              type="date"
+              value={exportFrom}
+              onChange={(e) => setExportFrom(e.target.value)}
+              className="rounded border border-black/10 px-2 py-1"
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="text-text-secondary">到</span>
+            <input
+              type="date"
+              value={exportTo}
+              onChange={(e) => setExportTo(e.target.value)}
+              className="rounded border border-black/10 px-2 py-1"
+            />
+          </label>
+          {(exportFrom || exportTo) && (
+            <button
+              type="button"
+              className="text-xs text-text-secondary underline"
+              onClick={() => {
+                setExportFrom('');
+                setExportTo('');
+              }}
+            >
+              清除范围（全部）
+            </button>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             className="rounded-lg bg-sidebar-active px-4 py-2 text-sm"
-            onClick={() => api.exportDownload('csv')}
+            onClick={() => {
+              const range = exportRange();
+              if (range === null) return;
+              api.exportDownload('csv', range);
+            }}
           >
             导出 CSV
           </button>

@@ -1,4 +1,5 @@
 import type { DeskTask } from '../types';
+import { DayCalendar } from './DayCalendar';
 import { NewTaskForm } from './NewTaskForm';
 
 function formatTime(iso: string): string {
@@ -19,8 +20,17 @@ function isOverdue(task: DeskTask): boolean {
 
 interface Props {
   tasks: DeskTask[];
+  commentCounts: Record<string, number>;
   selectedId: string | null;
   showCompleted: boolean;
+  filterDate: string;
+  searchDraft: string;
+  onFilterDateChange: (v: string) => void;
+  onSearchDraftChange: (v: string) => void;
+  onSearchSubmit: () => void;
+  onClearSearch: () => void;
+  onToday: () => void;
+  onClearDate: () => void;
   onToggleShowCompleted: () => void;
   onSelect: (id: string) => void;
   onComplete: (id: string) => void;
@@ -30,8 +40,17 @@ interface Props {
 
 export function TaskList({
   tasks,
+  commentCounts,
   selectedId,
   showCompleted,
+  filterDate,
+  searchDraft,
+  onFilterDateChange,
+  onSearchDraftChange,
+  onSearchSubmit,
+  onClearSearch,
+  onToday,
+  onClearDate,
   onToggleShowCompleted,
   onSelect,
   onComplete,
@@ -44,6 +63,7 @@ export function TaskList({
   const renderRow = (task: DeskTask) => {
     const selected = task.id === selectedId;
     const overdue = isOverdue(task);
+    const count = commentCounts[task.id] ?? 0;
     return (
       <div
         key={task.id}
@@ -75,6 +95,7 @@ export function TaskList({
           <div className="mt-1 flex flex-wrap gap-2 text-xs text-text-secondary">
             <span>{formatTime(task.createdAt)}</span>
             <span>· {sourceLabel(task.source)}</span>
+            {count > 0 && <span className="text-accent">评论 {count}</span>}
             {overdue && !task.completedAt && <span className="text-overdue">逾期</span>}
             {task.dueDate && (
               <span className={overdue ? 'text-overdue' : 'text-accent'}>
@@ -90,7 +111,10 @@ export function TaskList({
   return (
     <section className="flex h-full w-80 shrink-0 flex-col border-r border-black/5 bg-list-bg">
       <div className="flex items-center justify-between border-b border-black/5 px-4 py-3">
-        <span className="text-sm font-semibold">任务</span>
+        <span className="text-sm font-semibold">
+          任务{filterDate ? ` · ${filterDate}` : ''}
+          <span className="ml-1 font-normal text-text-secondary">({tasks.length})</span>
+        </span>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -105,6 +129,43 @@ export function TaskList({
           </button>
         </div>
       </div>
+
+      <div className="space-y-2 border-b border-black/5 px-3 py-2">
+        <DayCalendar
+          selected={filterDate}
+          onSelect={onFilterDateChange}
+          onToday={onToday}
+          onClear={onClearDate}
+          refreshToken={tasks.map((t) => t.id).join(',') + tasks.length}
+        />
+        <form
+          className="flex gap-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSearchSubmit();
+          }}
+        >
+          <input
+            type="search"
+            value={searchDraft}
+            onChange={(e) => onSearchDraftChange(e.target.value)}
+            placeholder="搜索任务或评论…"
+            className="min-w-0 flex-1 rounded border border-black/10 px-2 py-1 text-xs"
+            autoComplete="off"
+          />
+          {searchDraft && (
+            <button type="button" className="rounded px-2 py-1 text-xs text-text-secondary" onClick={onClearSearch}>
+              清除
+            </button>
+          )}
+        </form>
+        {searchDraft.trim() && (
+          <p className="px-0.5 text-[10px] text-text-secondary">
+            输入即搜 · 全库（忽略日期）· 正文与评论 · 含已完成
+          </p>
+        )}
+      </div>
+
       <NewTaskForm
         compact
         onSubmit={async (text) => {
@@ -113,7 +174,9 @@ export function TaskList({
       />
       <div className="flex-1 overflow-y-auto">
         {incomplete.length === 0 && completed.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-text-secondary">暂无任务</p>
+          <p className="px-4 py-8 text-center text-sm text-text-secondary">
+            {searchDraft.trim() ? `未找到「${searchDraft.trim()}」` : '暂无任务'}
+          </p>
         )}
         {incomplete.map(renderRow)}
         {showCompleted && completed.length > 0 && (

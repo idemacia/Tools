@@ -2,6 +2,9 @@
 .swiftpm/
 bin/
 obj/
+dist/
 .DS_Store
 *.user
 *.suo
+Packaging/AppIcon.iconset/
+Packaging/AppIcon.icns

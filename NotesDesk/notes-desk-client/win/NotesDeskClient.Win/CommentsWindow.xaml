@@ -1,0 +1,31 @@
+<Window x:Class="NotesDeskClient.Win.CommentsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="评论 / 复盘"
+        Width="440" Height="500"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <StackPanel>
+                <TextBlock Text="评论 / 复盘" FontWeight="SemiBold" FontSize="15"/>
+                <TextBlock x:Name="TaskTitle" FontSize="11" Foreground="#888" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/>
+            </StackPanel>
+            <Button Content="完成" HorizontalAlignment="Right" Click="Close_Click" Padding="10,4"/>
+        </Grid>
+        <TextBlock x:Name="Feedback" Grid.Row="1" FontSize="11" Foreground="Red" Margin="0,0,0,8" Visibility="Collapsed"/>
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="CommentsPanel"/>
+        </ScrollViewer>
+        <TextBox x:Name="DraftBox" Grid.Row="3" AcceptsReturn="True" TextWrapping="Wrap"
+                 Height="72" Margin="0,8,0,8" VerticalScrollBarVisibility="Auto"/>
+        <Button Grid.Row="4" x:Name="AddButton" Content="添加评论" Click="Add_Click" Padding="12,6" HorizontalAlignment="Right"/>
+    </Grid>
+</Window>

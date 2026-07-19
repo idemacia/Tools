@@ -4,9 +4,11 @@ struct TaskRowView: View {
     let task: DeskTask
     let fontSize: Double
     let isCompleted: Bool
+    var commentCount: Int = 0
     var onComplete: () -> Void
     var onUncomplete: () -> Void
     var onDueDateChange: (Date?) -> Void
+    var onComments: (() -> Void)? = nil
 
     @State private var showDueDatePicker = false
     @State private var draftDueDate = Date()
@@ -61,6 +63,12 @@ struct TaskRowView: View {
                 .popover(isPresented: $showDueDatePicker, arrowEdge: .bottom) {
                     dueDatePickerContent
                 }
+            }
+            if let onComments {
+                Button(commentCount > 0 ? "评论 \(commentCount)" : "评论", action: onComments)
+                    .font(.caption2)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(commentCount > 0 ? Color.orange : Color.secondary)
             }
             Text(sourceTimeLabel)
                 .font(.caption2)

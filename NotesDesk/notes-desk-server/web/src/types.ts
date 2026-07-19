@@ -93,3 +93,19 @@ export interface AppSettings {
   yearlyAnalysisDay: number;
   yearlyAnalysisHour: number;
 }
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListTasksParams {
+  view?: string;
+  status?: string;
+  date?: string;
+  q?: string;
+  includeCompleted?: boolean;
+}

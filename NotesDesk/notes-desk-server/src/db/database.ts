@@ -20,14 +20,19 @@ export function runMigrations(database: Database.Database): void {
     database.prepare('SELECT version FROM schema_migrations').all().map((r) => (r as { version: number }).version),
   );
 
-  if (!applied.has(1)) {
-    const sql = fs.readFileSync(
-      path.join(__dirname, '../../migrations/001_initial.sql'),
-      'utf8',
-    );
+  const migrationsDir = path.join(__dirname, '../../migrations');
+  const files = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => /^\d+_.*\.sql$/.test(f))
+    .sort();
+
+  for (const file of files) {
+    const version = Number(file.split('_')[0]);
+    if (!Number.isFinite(version) || applied.has(version)) continue;
+    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
     database.exec(sql);
     database.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(
-      1,
+      version,
       new Date().toISOString(),
     );
   }

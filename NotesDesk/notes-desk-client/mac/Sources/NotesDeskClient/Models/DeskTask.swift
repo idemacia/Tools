@@ -46,7 +46,7 @@ enum DeskViewMode: String, CaseIterable, Identifiable {
     }
 }
 
-struct TaskPeriodStats: Sendable, Equatable {
+struct LocalDailyStats: Sendable, Equatable {
     let periodStart: Date
     let periodEnd: Date
     let planned: Int

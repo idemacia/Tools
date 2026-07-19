@@ -28,6 +28,11 @@ public sealed class DeskViewModel : INotifyPropertyChanged
     private double _panelOpacity;
     private double _fontSize;
     private bool _panelVisible;
+    private string? _filterDate;
+    private string _searchQuery = "";
+    private CalendarDayMarks _calendarMarks = new();
+    private Dictionary<string, int> _commentCounts = new();
+    private string _calendarMonth = ShanghaiTime.MonthString();
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -73,6 +78,25 @@ public sealed class DeskViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<DeskTask> IncompleteTasks => _incompleteTasks;
     public IReadOnlyList<DeskTask> CompletedTasks => _completedTasks;
+    public IReadOnlyDictionary<string, int> CommentCounts => _commentCounts;
+    public CalendarDayMarks CalendarMarks => _calendarMarks;
+    public string CalendarMonth => _calendarMonth;
+
+    public string? FilterDate
+    {
+        get => _filterDate;
+        set
+        {
+            if (SetField(ref _filterDate, value))
+                _ = RefreshFromServerAsync();
+        }
+    }
+
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set => SetField(ref _searchQuery, value);
+    }
 
     public bool ShowCompletedSection
     {
@@ -143,8 +167,25 @@ public sealed class DeskViewModel : INotifyPropertyChanged
         }
     }
 
+    public int CommentCountFor(string taskId) =>
+        _commentCounts.TryGetValue(taskId, out var n) ? n : 0;
+
     public void StartPolling() => _pollTimer.Start();
     public void StopPolling() => _pollTimer.Stop();
+
+    public void ApplySearch(string query)
+    {
+        SearchQuery = query.Trim();
+        _ = RefreshFromServerAsync();
+    }
+
+    public void SetCalendarMonth(string month)
+    {
+        if (month == _calendarMonth) return;
+        _calendarMonth = month;
+        OnPropertyChanged(nameof(CalendarMonth));
+        _ = LoadCalendarDaysAsync(month);
+    }
 
     public async Task RefreshFromServerAsync()
     {
@@ -163,20 +204,62 @@ public sealed class DeskViewModel : INotifyPropertyChanged
             BridgeConnected = health.Bridge;
             StatusMessage = health.Bridge ? "NAS 已连接 · 钉钉桥在线" : "NAS 已连接 · 钉钉桥未启动";
 
-            var viewParam = ViewMode == DeskViewMode.Today ? "today" : null;
-            _allIncomplete = await _api.ListTasksAsync(viewParam, "incomplete");
-            var limit = ViewMode == DeskViewMode.History ? 200 : 30;
-            _allCompleted = (await _api.ListTasksAsync(status: "completed"))
-                .OrderByDescending(t => t.CompletedAt ?? DateTime.MinValue)
-                .Take(limit)
-                .ToList();
+            var viewParam = ViewMode == DeskViewMode.Today && FilterDate == null ? "today" : null;
+            var q = string.IsNullOrWhiteSpace(SearchQuery) ? null : SearchQuery.Trim();
+            var counts = new Dictionary<string, int>();
+
+            if (q != null)
+            {
+                var res = await _api.ListTasksAsync(q: q, includeCompleted: true);
+                _allIncomplete = res.Tasks.Where(t => !t.IsCompleted).ToList();
+                _allCompleted = res.Tasks.Where(t => t.IsCompleted).ToList();
+                counts = res.CommentCounts;
+            }
+            else if (FilterDate != null)
+            {
+                var res = await _api.ListTasksAsync(date: FilterDate, includeCompleted: true);
+                _allIncomplete = res.Tasks.Where(t => !t.IsCompleted).ToList();
+                _allCompleted = res.Tasks.Where(t => t.IsCompleted).ToList();
+                counts = res.CommentCounts;
+            }
+            else
+            {
+                var incompleteRes = await _api.ListTasksAsync(view: viewParam, status: "incomplete");
+                _allIncomplete = incompleteRes.Tasks;
+                counts = incompleteRes.CommentCounts;
+                var limit = ViewMode == DeskViewMode.History ? 200 : 30;
+                var completedRes = await _api.ListTasksAsync(status: "completed");
+                _allCompleted = completedRes.Tasks
+                    .OrderByDescending(t => t.CompletedAt ?? DateTime.MinValue)
+                    .Take(limit)
+                    .ToList();
+                foreach (var kv in completedRes.CommentCounts)
+                    counts[kv.Key] = kv.Value;
+            }
+
+            _commentCounts = counts;
+            OnPropertyChanged(nameof(CommentCounts));
             ApplyLists();
+            await LoadCalendarDaysAsync(_calendarMonth);
         }
         catch (Exception ex)
         {
             ServerConnected = false;
             BridgeConnected = false;
             StatusMessage = ex.Message;
+        }
+    }
+
+    private async Task LoadCalendarDaysAsync(string month)
+    {
+        try
+        {
+            _calendarMarks = await _api.CalendarDaysAsync(month);
+            OnPropertyChanged(nameof(CalendarMarks));
+        }
+        catch
+        {
+            // 色点失败不阻断列表
         }
     }
 
@@ -277,7 +360,8 @@ public sealed class DeskViewModel : INotifyPropertyChanged
 
     private List<DeskTask> FilteredIncompleteTasks()
     {
-        if (ViewMode != DeskViewMode.Today) return _allIncomplete.ToList();
+        if (!string.IsNullOrEmpty(SearchQuery)) return _allIncomplete.ToList();
+        if (ViewMode != DeskViewMode.Today || FilterDate != null) return _allIncomplete.ToList();
         var today = DateTime.Today;
         return _allIncomplete.Where(t =>
             t.CreatedAt.Date == today ||
@@ -286,6 +370,18 @@ public sealed class DeskViewModel : INotifyPropertyChanged
 
     private void UpdateTitle()
     {
+        if (!string.IsNullOrEmpty(SearchQuery))
+        {
+            var count = _incompleteTasks.Count + _completedTasks.Count;
+            DisplayTitle = $"搜索「{SearchQuery}」（{count}）";
+            return;
+        }
+        if (FilterDate != null)
+        {
+            var count = _incompleteTasks.Count + _completedTasks.Count;
+            DisplayTitle = $"{FilterDate}（{count}）";
+            return;
+        }
         DisplayTitle = ViewMode switch
         {
             DeskViewMode.History => "历史",

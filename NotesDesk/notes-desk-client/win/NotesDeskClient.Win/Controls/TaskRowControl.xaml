@@ -20,7 +20,11 @@
                 <Button x:Name="DueButton" Content="设截止" FontSize="11"
                         Click="DueButton_Click"
                         Background="Transparent" BorderThickness="0"
-                        Foreground="#888" Cursor="Hand" Padding="0"/>
+                        Foreground="#888" Cursor="Hand" Padding="0" Margin="0,0,8,0"/>
+                <Button x:Name="CommentsButton" Content="评论" FontSize="11"
+                        Click="CommentsButton_Click"
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="#888" Cursor="Hand" Padding="0" Margin="0,0,8,0"/>
                 <TextBlock x:Name="MetaLabel" FontSize="11" Foreground="#AAA" VerticalAlignment="Center"/>
             </StackPanel>
         </StackPanel>

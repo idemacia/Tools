@@ -43,6 +43,27 @@ public static class AppSettings
         set { var d = Load(); d.ApiToken = value; Save(d); }
     }
 
+    public static string WebUsername
+    {
+        get => Load().WebUsername ?? "admin";
+        set { var d = Load(); d.WebUsername = value; Save(d); }
+    }
+
+    public static string WebPassword
+    {
+        get => Load().WebPassword ?? "admin";
+        set { var d = Load(); d.WebPassword = value; Save(d); }
+    }
+
+    public static string SessionCookie
+    {
+        get => Load().SessionCookie ?? "";
+        set { var d = Load(); d.SessionCookie = value; Save(d); }
+    }
+
+    public static bool HasApiAuth =>
+        !string.IsNullOrWhiteSpace(ApiToken) || !string.IsNullOrWhiteSpace(SessionCookie);
+
     public static double PanelOpacity
     {
         get => Load().PanelOpacity <= 0 ? 0.92 : Load().PanelOpacity;
@@ -111,6 +132,9 @@ public static class AppSettings
     {
         public string? ServerBaseUrl { get; set; }
         public string? ApiToken { get; set; }
+        public string? WebUsername { get; set; }
+        public string? WebPassword { get; set; }
+        public string? SessionCookie { get; set; }
         public double PanelOpacity { get; set; }
         public double FontSize { get; set; }
         public bool? PanelVisible { get; set; }

@@ -9,15 +9,23 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { LoginPage } from './components/LoginPage';
 import type { DeskTask, ViewMode } from './types';
 
+function todayStr(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+}
+
 export default function App() {
   const [authUser, setAuthUser] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [view, setView] = useState<ViewMode>('incomplete');
   const [tasks, setTasks] = useState<DeskTask[]>([]);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(true);
   const [bridge, setBridge] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [filterDate, setFilterDate] = useState('');
+  const [searchQ, setSearchQ] = useState('');
+  const [searchDraft, setSearchDraft] = useState('');
 
   useEffect(() => {
     void api
@@ -28,6 +36,34 @@ export default function App() {
   }, []);
 
   const loadTasks = useCallback(async () => {
+    const q = searchQ.trim() || undefined;
+
+    // 有搜索词：全库（含已完成），不叠加日期/视图过滤
+    if (q) {
+      const res = await api.listTasks({ q, includeCompleted: true });
+      setTasks(res.tasks);
+      setCommentCounts(res.commentCounts ?? {});
+      setSelectedId((prev) => {
+        if (prev && res.tasks.some((t) => t.id === prev)) return prev;
+        return res.tasks[0]?.id ?? null;
+      });
+      return;
+    }
+
+    if (filterDate) {
+      const res = await api.listTasks({
+        date: filterDate,
+        includeCompleted: true,
+      });
+      setTasks(res.tasks);
+      setCommentCounts(res.commentCounts ?? {});
+      setSelectedId((prev) => {
+        if (prev && res.tasks.some((t) => t.id === prev)) return prev;
+        return res.tasks[0]?.id ?? null;
+      });
+      return;
+    }
+
     const viewParam = view === 'today' ? 'today' : undefined;
     const status =
       view === 'completed'
@@ -35,13 +71,23 @@ export default function App() {
         : view === 'incomplete' || view === 'today'
           ? 'incomplete'
           : undefined;
-    const res = await api.listTasks(viewParam, status);
+    const res = await api.listTasks({
+      view: viewParam,
+      status,
+    });
     setTasks(res.tasks);
+    setCommentCounts(res.commentCounts ?? {});
     setSelectedId((prev) => {
       if (prev && res.tasks.some((t) => t.id === prev)) return prev;
       return res.tasks[0]?.id ?? null;
     });
-  }, [view]);
+  }, [view, filterDate, searchQ]);
+
+  // 输入即搜（防抖 250ms）
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQ(searchDraft.trim()), 250);
+    return () => clearTimeout(t);
+  }, [searchDraft]);
 
   useEffect(() => {
     if (!authUser) return;
@@ -99,7 +145,15 @@ export default function App() {
 
   return (
     <div className="flex h-full min-h-screen">
-      <Sidebar view={view} onChange={setView} bridge={bridge} incompleteCount={incompleteCount} />
+      <Sidebar
+        view={view}
+        onChange={(v) => {
+          setFilterDate('');
+          setView(v);
+        }}
+        bridge={bridge}
+        incompleteCount={incompleteCount}
+      />
       {view === 'stats' ? (
         <StatsPanel />
       ) : view === 'settings' ? (
@@ -108,8 +162,20 @@ export default function App() {
         <>
           <TaskList
             tasks={tasks}
+            commentCounts={commentCounts}
             selectedId={selectedId}
             showCompleted={showCompleted}
+            filterDate={filterDate}
+            searchDraft={searchDraft}
+            onFilterDateChange={setFilterDate}
+            onSearchDraftChange={setSearchDraft}
+            onSearchSubmit={() => setSearchQ(searchDraft.trim())}
+            onClearSearch={() => {
+              setSearchDraft('');
+              setSearchQ('');
+            }}
+            onToday={() => setFilterDate(todayStr())}
+            onClearDate={() => setFilterDate('')}
             onToggleShowCompleted={() => setShowCompleted((v) => !v)}
             onSelect={(id) => {
               setCreating(false);
@@ -131,6 +197,7 @@ export default function App() {
                 void api.patchTask(id, { action: completed ? 'complete' : 'uncomplete' }).then(loadTasks)
               }
               onDueDate={(id, due) => void setDueDate(id, due)}
+              onCommentsChanged={() => void loadTasks()}
             />
           )}
         </>

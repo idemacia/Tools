@@ -162,3 +162,29 @@ export const DEFAULT_SETTINGS: AppSettings = {
   yearlyAnalysisDay: 1,
   yearlyAnalysisHour: 8,
 };
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskCommentRow {
+  id: string;
+  task_id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export function rowToComment(row: TaskCommentRow): TaskComment {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    body: row.body,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}

@@ -5,6 +5,8 @@ struct FloatingPanelView: View {
     @ObservedObject var viewModel: DeskViewModel
     var onWindowMoved: () -> Void
     @State private var newTaskText = ""
+    @State private var searchDraft = ""
+    @State private var searchTask: Task<Void, Never>? = nil
 
     var body: some View {
         ZStack {
@@ -21,6 +23,9 @@ struct FloatingPanelView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                     .padding(.bottom, 8)
+                filterBar
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
                 quickAddBar
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
@@ -30,11 +35,74 @@ struct FloatingPanelView: View {
                     .padding(.vertical, 8)
             }
         }
-        .frame(minWidth: 320, minHeight: 280)
+        .frame(minWidth: 320, minHeight: 320)
         .background(WindowMoveObserver(onMoved: onWindowMoved))
         .sheet(isPresented: $viewModel.showSettings) {
-            ConnectionSettingsSheet(viewModel: viewModel)
+            SettingsSheet(viewModel: viewModel)
         }
+        .sheet(item: $viewModel.commentsTask) { task in
+            TaskCommentsSheet(task: task)
+                .onDisappear {
+                    Task { await viewModel.refreshFromServer() }
+                }
+        }
+    }
+
+    private var filterBar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            FilterDayCalendar(
+                selected: viewModel.filterDate,
+                marks: viewModel.calendarMarks,
+                onSelect: { day in
+                    viewModel.filterDate = day
+                    Task { await viewModel.refreshFromServer() }
+                },
+                onToday: {
+                    viewModel.filterDate = StatsDateHelper.dayString()
+                    Task { await viewModel.refreshFromServer() }
+                },
+                onClear: {
+                    viewModel.filterDate = nil
+                    Task { await viewModel.refreshFromServer() }
+                },
+                onMonthChange: { month in
+                    viewModel.setCalendarMonth(month)
+                }
+            )
+            HStack(spacing: 6) {
+                TextField("搜索任务或评论…", text: $searchDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(applySearch)
+                    .onChange(of: searchDraft) { _ in
+                        scheduleSearchDebounce()
+                    }
+                if !viewModel.searchQuery.isEmpty || !searchDraft.isEmpty {
+                    Button("清除") {
+                        searchTask?.cancel()
+                        searchDraft = ""
+                        viewModel.searchQuery = ""
+                        Task { await viewModel.refreshFromServer() }
+                    }
+                    .font(.caption)
+                }
+            }
+        }
+    }
+
+    private func scheduleSearchDebounce() {
+        searchTask?.cancel()
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run { applySearch() }
+        }
+    }
+
+    private func applySearch() {
+        let next = searchDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard next != viewModel.searchQuery else { return }
+        viewModel.searchQuery = next
+        Task { await viewModel.refreshFromServer() }
     }
 
     private var header: some View {
@@ -68,9 +136,10 @@ struct FloatingPanelView: View {
     }
 
     private var quickAddBar: some View {
-        HStack(spacing: 8) {
-            TextField("新建待办…", text: $newTaskText)
+        HStack(alignment: .bottom, spacing: 8) {
+            TextField("新建待办…（多条可换行）", text: $newTaskText, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
+                .lineLimit(1...4)
                 .onSubmit(submitNewTask)
             Button("添加") { submitNewTask() }
                 .disabled(newTaskText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -96,11 +165,13 @@ struct FloatingPanelView: View {
                                 task: task,
                                 fontSize: viewModel.fontSize,
                                 isCompleted: false,
+                                commentCount: viewModel.commentCounts[task.id] ?? 0,
                                 onComplete: { viewModel.completeTask(id: task.id) },
                                 onUncomplete: {},
                                 onDueDateChange: { date in
                                     viewModel.setDueDate(taskID: task.id, dueDate: date)
-                                }
+                                },
+                                onComments: { viewModel.commentsTask = task }
                             )
                             if task.id != viewModel.incompleteTasks.last?.id {
                                 Divider().opacity(0.3)
@@ -121,9 +192,11 @@ struct FloatingPanelView: View {
                                     task: task,
                                     fontSize: viewModel.fontSize,
                                     isCompleted: true,
+                                    commentCount: viewModel.commentCounts[task.id] ?? 0,
                                     onComplete: {},
                                     onUncomplete: { viewModel.uncompleteTask(id: task.id) },
-                                    onDueDateChange: { _ in }
+                                    onDueDateChange: { _ in },
+                                    onComments: { viewModel.commentsTask = task }
                                 )
                                 if task.id != viewModel.completedTasks.last?.id {
                                     Divider().opacity(0.3)
@@ -155,7 +228,7 @@ struct FloatingPanelView: View {
     }
 
     private var emptyPlaceholder: some View {
-        Text("暂无待办\n\n手机钉钉发消息到 NAS，或上方输入框添加。\n示例：买牛奶 / 6/1 交报告")
+        Text("暂无待办\n\n手机钉钉发消息到 NAS，或上方输入框添加。\n多条可换行发送，例如：\n买牛奶\n6/1 交报告")
             .font(.system(size: viewModel.fontSize))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .topLeading)

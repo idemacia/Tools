@@ -70,14 +70,81 @@ final class NasApiClient {
         try await get("/health", auth: false)
     }
 
-    func listTasks(view: String? = nil, status: String? = nil) async throws -> [DeskTask] {
+    func listTasks(
+        view: String? = nil,
+        status: String? = nil,
+        date: String? = nil,
+        q: String? = nil,
+        includeCompleted: Bool? = nil
+    ) async throws -> (tasks: [DeskTask], commentCounts: [String: Int]) {
         var components = URLComponents()
         components.queryItems = []
         if let view { components.queryItems?.append(URLQueryItem(name: "view", value: view)) }
         if let status { components.queryItems?.append(URLQueryItem(name: "status", value: status)) }
+        if let date { components.queryItems?.append(URLQueryItem(name: "date", value: date)) }
+        if let q, !q.isEmpty { components.queryItems?.append(URLQueryItem(name: "q", value: q)) }
+        if let includeCompleted, !includeCompleted {
+            components.queryItems?.append(URLQueryItem(name: "includeCompleted", value: "false"))
+        }
         let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
-        let res: TasksResponse = try await get("/api/tasks\(query)", auth: true)
-        return res.tasks
+        struct Res: Decodable {
+            let tasks: [DeskTask]
+            let commentCounts: [String: Int]?
+        }
+        let res: Res = try await get("/api/tasks\(query)", auth: true)
+        return (res.tasks, res.commentCounts ?? [:])
+    }
+
+    /// month = YYYY-MM；黄=新建 / 红=未完成 / 绿=已完成
+    func calendarDays(month: String) async throws -> CalendarDayMarks {
+        struct Res: Decodable {
+            let created: [String: Int]?
+            let incomplete: [String: Int]?
+            let completed: [String: Int]?
+        }
+        let encoded = month.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? month
+        let res: Res = try await get("/api/tasks/calendar-days?month=\(encoded)", auth: true)
+        return CalendarDayMarks(
+            created: res.created ?? [:],
+            incomplete: res.incomplete ?? [:],
+            completed: res.completed ?? [:]
+        )
+    }
+
+    func listComments(taskId: String) async throws -> [TaskComment] {
+        struct Res: Decodable { let comments: [TaskComment] }
+        let res: Res = try await get("/api/tasks/\(taskId)/comments", auth: true)
+        return res.comments
+    }
+
+    func createComment(taskId: String, body: String) async throws -> TaskComment {
+        struct Body: Encodable { let body: String }
+        struct Res: Decodable { let comment: TaskComment }
+        let res: Res = try await postAuth("/api/tasks/\(taskId)/comments", body: Body(body: body))
+        return res.comment
+    }
+
+    func updateComment(taskId: String, commentId: String, body: String) async throws -> TaskComment {
+        struct Body: Encodable { let body: String }
+        struct Res: Decodable { let comment: TaskComment }
+        return try await requestWithAuthRetry {
+            var req = URLRequest(url: try self.url(for: "/api/tasks/\(taskId)/comments/\(commentId)"))
+            req.httpMethod = "PATCH"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try self.encoder.encode(Body(body: body))
+            self.addAuth(&req)
+            let (data, resp) = try await self.session.data(for: req)
+            try self.validate(resp, data: data)
+            guard let decoded = try? self.decoder.decode(Res.self, from: data) else {
+                throw NasApiError.decodeFailed
+            }
+            return decoded.comment
+        }
+    }
+
+    func deleteComment(taskId: String, commentId: String) async throws {
+        struct Res: Decodable { let ok: Bool? }
+        _ = try await delete("/api/tasks/\(taskId)/comments/\(commentId)") as Res
     }
 
     func completeTask(id: String) async throws -> DeskTask {
@@ -111,6 +178,105 @@ final class NasApiClient {
         if !res.ok {
             throw NasApiError.httpStatus(422, res.message ?? "ingest failed")
         }
+    }
+
+    // MARK: - LLM / Settings / Stats
+
+    func getLlmConfig() async throws -> ServerLlmConfig {
+        let res: LlmConfigResponse = try await get("/api/config/llm", auth: true)
+        return res.config
+    }
+
+    func saveLlmConfig(
+        enabled: Bool,
+        provider: String,
+        baseUrl: String,
+        apiKey: String?,
+        model: String,
+        maxTokens: Int,
+        temperature: Double
+    ) async throws -> ServerLlmConfig {
+        struct Body: Encodable {
+            let enabled: Bool
+            let provider: String
+            let baseUrl: String
+            let apiKey: String?
+            let model: String
+            let maxTokens: Int
+            let temperature: Double
+        }
+        let key = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let res: LlmConfigResponse = try await put(
+            "/api/config/llm",
+            body: Body(
+                enabled: enabled,
+                provider: provider,
+                baseUrl: baseUrl,
+                apiKey: (key?.isEmpty == false) ? key : nil,
+                model: model,
+                maxTokens: maxTokens,
+                temperature: temperature
+            )
+        )
+        return res.config
+    }
+
+    func testLlm(baseUrl: String, apiKey: String?, model: String) async throws -> String {
+        struct Body: Encodable {
+            let baseUrl: String
+            let apiKey: String?
+            let model: String
+        }
+        let key = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let res: OkMessageResponse = try await postAuth(
+            "/api/config/llm/test",
+            body: Body(
+                baseUrl: baseUrl,
+                apiKey: (key?.isEmpty == false) ? key : nil,
+                model: model
+            )
+        )
+        return res.message ?? "连接成功"
+    }
+
+    func getServerSettings() async throws -> ServerAppSettings {
+        let res: ServerSettingsResponse = try await get("/api/settings", auth: true)
+        return res.settings
+    }
+
+    func saveServerSettings(_ settings: ServerAppSettings) async throws -> ServerAppSettings {
+        let res: ServerSettingsResponse = try await put("/api/settings", body: settings)
+        return res.settings
+    }
+
+    func getPeriodStats(period: StatsPeriod, year: Int, week: Int?, month: Int?) async throws -> ServerPeriodStats {
+        var components = URLComponents()
+        components.queryItems = [URLQueryItem(name: "year", value: String(year))]
+        if let week { components.queryItems?.append(URLQueryItem(name: "week", value: String(week))) }
+        if let month { components.queryItems?.append(URLQueryItem(name: "month", value: String(month))) }
+        let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
+        let path: String
+        switch period {
+        case .week: path = "/api/stats/weekly\(query)"
+        case .month: path = "/api/stats/monthly\(query)"
+        case .year: path = "/api/stats/yearly\(query)"
+        }
+        struct Res: Decodable { let stats: ServerPeriodStats }
+        let res: Res = try await get(path, auth: true)
+        return res.stats
+    }
+
+    func runAnalysis(period: StatsPeriod, year: Int, week: Int?, month: Int?) async throws -> AnalysisRunResult {
+        struct Body: Encodable {
+            let period: String
+            let year: Int
+            let week: Int?
+            let month: Int?
+        }
+        return try await postAuth(
+            "/api/stats/analyze",
+            body: Body(period: period.rawValue, year: year, week: week, month: month)
+        )
     }
 
     /// Web 登录，成功后写入 AppSettings.sessionCookie
@@ -225,6 +391,21 @@ final class NasApiClient {
     }
 
     private func post<T: Decodable, B: Encodable>(_ path: String, body: B, auth: Bool) async throws -> T {
+        if auth {
+            return try await requestWithAuthRetry {
+                try await self.postOnce(path, body: body, auth: true)
+            }
+        }
+        return try await postOnce(path, body: body, auth: false)
+    }
+
+    private func postAuth<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        try await requestWithAuthRetry {
+            try await self.postOnce(path, body: body, auth: true)
+        }
+    }
+
+    private func postOnce<T: Decodable, B: Encodable>(_ path: String, body: B, auth: Bool) async throws -> T {
         var req = URLRequest(url: try url(for: path))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -234,6 +415,20 @@ final class NasApiClient {
         try validate(resp, data: data)
         guard let decoded = try? decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
         return decoded
+    }
+
+    private func put<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        try await requestWithAuthRetry {
+            var req = URLRequest(url: try self.url(for: path))
+            req.httpMethod = "PUT"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try self.encoder.encode(body)
+            self.addAuth(&req)
+            let (data, resp) = try await self.session.data(for: req)
+            try self.validate(resp, data: data)
+            guard let decoded = try? self.decoder.decode(T.self, from: data) else { throw NasApiError.decodeFailed }
+            return decoded
+        }
     }
 
     private func delete<T: Decodable>(_ path: String) async throws -> T {

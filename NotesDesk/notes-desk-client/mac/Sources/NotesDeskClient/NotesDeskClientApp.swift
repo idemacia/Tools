@@ -50,6 +50,14 @@ private struct MenuContentView: View {
             Button("设置…") {
                 viewModel.panelVisible = true
                 appDelegate.setPanelVisible(true)
+                viewModel.settingsTab = .connection
+                viewModel.showSettings = true
+            }
+
+            Button("AI 统计与分析…") {
+                viewModel.panelVisible = true
+                appDelegate.setPanelVisible(true)
+                viewModel.settingsTab = .stats
                 viewModel.showSettings = true
             }
 

@@ -3,7 +3,9 @@ import type {
   AppSettings,
   DeskTask,
   DingTalkConfigForm,
+  ListTasksParams,
   LlmConfigForm,
+  TaskComment,
   TaskPeriodStats,
 } from '../types';
 
@@ -61,13 +63,51 @@ export const api = {
       bridge: boolean;
     }>,
 
-  listTasks: (view?: string, status?: string) => {
+  listTasks: (params?: ListTasksParams | string, status?: string) => {
     const q = new URLSearchParams();
-    if (view) q.set('view', view);
-    if (status) q.set('status', status);
+    if (typeof params === 'string' || params === undefined) {
+      if (params) q.set('view', params);
+      if (status) q.set('status', status);
+    } else {
+      if (params.view) q.set('view', params.view);
+      if (params.status) q.set('status', params.status);
+      if (params.date) q.set('date', params.date);
+      if (params.q) q.set('q', params.q);
+      if (params.includeCompleted === false) q.set('includeCompleted', 'false');
+    }
     const qs = q.toString();
-    return request<{ tasks: DeskTask[] }>(`/api/tasks${qs ? `?${qs}` : ''}`);
+    return request<{ tasks: DeskTask[]; commentCounts?: Record<string, number> }>(
+      `/api/tasks${qs ? `?${qs}` : ''}`,
+    );
   },
+
+  /** month = YYYY-MM；黄=新建 / 红=未完成 / 绿=已完成 */
+  calendarDays: (month: string) =>
+    request<{
+      created: Record<string, number>;
+      incomplete: Record<string, number>;
+      completed: Record<string, number>;
+    }>(`/api/tasks/calendar-days?month=${encodeURIComponent(month)}`),
+
+  listComments: (taskId: string) =>
+    request<{ comments: TaskComment[] }>(`/api/tasks/${taskId}/comments`),
+
+  createComment: (taskId: string, body: string) =>
+    request<{ comment: TaskComment }>(`/api/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }),
+
+  updateComment: (taskId: string, commentId: string, body: string) =>
+    request<{ comment: TaskComment }>(`/api/tasks/${taskId}/comments/${commentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ body }),
+    }),
+
+  deleteComment: (taskId: string, commentId: string) =>
+    request<{ ok: boolean }>(`/api/tasks/${taskId}/comments/${commentId}`, {
+      method: 'DELETE',
+    }),
 
   patchTask: (id: string, body: { action?: string; dueDate?: string | null }) =>
     request<{ task: DeskTask }>(`/api/tasks/${id}`, {
@@ -150,26 +190,37 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  exportDownload: (format: 'csv' | 'json') => {
+  exportDownload: (format: 'csv' | 'json', range?: { from?: string; to?: string }) => {
     const token = getToken();
     const qs = new URLSearchParams({ format });
+    if (range?.from) qs.set('from', range.from);
+    if (range?.to) qs.set('to', range.to);
     if (token) qs.set('token', token);
     window.open(`/api/export/tasks?${qs}`, '_blank');
   },
 
-  exportJsonBlob: async (): Promise<Blob> => {
+  exportJsonBlob: async (range?: { from?: string; to?: string }): Promise<Blob> => {
     const token = getToken();
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch('/api/export/tasks', { headers, credentials: 'include' });
+    const qs = new URLSearchParams();
+    if (range?.from) qs.set('from', range.from);
+    if (range?.to) qs.set('to', range.to);
+    const url = qs.toString() ? `/api/export/tasks?${qs}` : '/api/export/tasks';
+    const res = await fetch(url, { headers, credentials: 'include' });
     if (!res.ok) throw new Error('导出失败');
     const data = await res.json();
     return new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   },
 
-  importTasks: (tasks: DeskTask[]) =>
-    request<{ imported: number; total: number }>('/api/import/tasks', {
+  importTasks: (payload: DeskTask[] | { tasks: DeskTask[]; comments?: unknown[] }) =>
+    request<{
+      imported: number;
+      total: number;
+      commentsImported: number;
+      commentsTotal: number;
+    }>('/api/import/tasks', {
       method: 'POST',
-      body: JSON.stringify({ tasks }),
+      body: JSON.stringify(Array.isArray(payload) ? { tasks: payload } : payload),
     }),
 };

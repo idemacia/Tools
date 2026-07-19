@@ -73,6 +73,84 @@ function parseDuePrefix(
   return { dueDate, text: body };
 }
 
+function stripListPrefix(line: string): string {
+  // 行首编号/符号：1、 1. 1） (1) （1） [1] - • * 等
+  const prefix =
+    /^(?:\(\d+\)|（\d+）|\[\d+\]|\d+(?:[、）\)）]|[\.．](?!\d))|[\-•·*●○▪►])\s*/u;
+  let s = line.trim();
+  let prev = '';
+  while (s !== prev) {
+    prev = s;
+    s = s.replace(prefix, '').trim();
+  }
+  return s;
+}
+
+/** 同行内按后续编号切分（如：1、买牛奶 2、买鸡蛋 / (1)开会 (2)写文档） */
+function splitInlineNumbered(text: string): string[] | null {
+  const marker = /(?:\(\d+\)|（\d+）|\d+(?:[、）\)）]|[\.．](?!\d)))/gu;
+  const indices: number[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = marker.exec(text)) !== null) {
+    indices.push(match.index);
+  }
+  if (indices.length <= 1) return null;
+
+  const parts: string[] = [];
+  const head = text.slice(0, indices[0]).trim();
+  if (head) {
+    const stripped = stripListPrefix(head);
+    if (stripped) parts.push(stripped);
+  }
+  for (let i = 0; i < indices.length; i++) {
+    const chunk = text.slice(indices[i], indices[i + 1] ?? text.length).trim();
+    const stripped = stripListPrefix(chunk);
+    if (stripped) parts.push(stripped);
+  }
+  return parts.length > 1 ? parts : null;
+}
+
+function splitBySeparators(text: string): string[] {
+  return text
+    .split(/[\r\n]+|[；;|｜]+/u)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/**
+ * 将一段话拆成多条待办（纯规则，不调用 LLM）。
+ *
+ * 支持习惯：
+ * - 换行：每行一条
+ * - 分号：买牛奶；买鸡蛋 / 买牛奶;买鸡蛋
+ * - 竖线：买牛奶|买鸡蛋
+ * - 编号行首：1、 / 1. / 1）/ (1) / （1）/ [1] / - / •
+ * - 同行多条：1、买牛奶 2、买鸡蛋 / 1.买牛奶 2.买鸡蛋
+ */
+export function splitTaskLines(text: string): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  // 指令类整段不拆分
+  if (trimmed === '列表') return [trimmed];
+  if (trimmed.startsWith('完成')) return [trimmed];
+  if (trimmed.startsWith('截止') && !/[\r\n]/.test(trimmed)) return [trimmed];
+
+  const segments = splitBySeparators(trimmed);
+  const expanded: string[] = [];
+
+  for (const segment of segments) {
+    const inline = splitInlineNumbered(segment);
+    const chunks = inline ?? [segment];
+    for (const chunk of chunks) {
+      const stripped = stripListPrefix(chunk);
+      if (stripped) expanded.push(stripped);
+    }
+  }
+
+  return expanded.length > 0 ? expanded : [stripListPrefix(trimmed)];
+}
+
 export function parseTaskText(
   text: string,
   source: MessageSource,
@@ -124,6 +202,24 @@ export function parseTaskText(
   }
 
   const now = receivedAt.toISOString();
+
+  const withDue = parseDuePrefix(trimmed, receivedAt, timeZone);
+  if (withDue) {
+    const task: DeskTask = {
+      id: messageId ?? uuidv4(),
+      text: withDue.text,
+      createdAt: now,
+      dueDate: withDue.dueDate.toISOString(),
+      completedAt: null,
+      remindedAt: null,
+      source,
+      dingtalkMessageId: source === 'dingtalk' ? messageId : null,
+      dingtalkStaffId: staffId,
+      updatedAt: now,
+    };
+    return { type: 'create', task };
+  }
+
   const task: DeskTask = {
     id: messageId ?? uuidv4(),
     text: trimmed,
