@@ -1,0 +1,15 @@
+这个目录可以留空。
+
+HACS 默认从 GitHub 最新发布包下载：
+https://github.com/hacs/integration/releases/latest/download/hacs.zip
+
+如果下载失败，关注微信公众号「智能家居报告」，发送关键词 HACS，
+按回复的百度云链接下载，再把文件放到本目录并命名为 hacs.zip。
+
+Home Assistant 镜像也可以不放。没有 tar 时，脚本会拉取：
+ghcr.1ms.run/home-assistant/home-assistant:2026.9.4
+
+只有在公网拉取失败时，才把对应文件放进本目录：
+  hacs.zip
+  home-assistant-image.tar
+  mosquitto-image.tar

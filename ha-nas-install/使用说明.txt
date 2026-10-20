@@ -1,0 +1,96 @@
+Home Assistant（群晖 Docker）分步安装
+目标环境：Synology DSM 7 / Docker / host 网络
+默认按第一次安装：容器 homeassistant，目录 /volume1/docker/homeassistant，HTTP 端口 8123。
+运行时会询问端口。8123 已被占用时，输入另一个端口。反向代理默认不设置。
+
+这个脚本会做的事
+  - 检查 docker 与 docker-compose（或 docker compose）
+  - 询问 HTTP 端口，并检查该端口是否已被占用
+  - 检查是否已有 Mosquitto。已有则复用；没有则询问，由用户决定是否安装
+  - 从本地 tar 加载镜像，或按 sources.env 里的地址拉取
+  - 写入 INSTALL_DIR/compose.yaml 和 .env
+  - 启动容器 homeassistant，目录 /volume1/docker/homeassistant
+  - 把 HACS 解压到 config/custom_components/hacs
+
+这个脚本不会做的事（文档里已验证，但属于群晖界面或 HA 网页）
+  - 不修改 /etc/docker/daemon.json
+  - 不配置 Synology Reverse Proxy、WebSocket、Let's Encrypt
+  - 不创建 HA 管理员、不开启 MFA
+  - 不在 HA 里添加 MQTT 集成（账号密码留在网页里填）
+  - 已有 Mosquitto 时不部署第二套。没有时，只有用户选择安装才会创建
+
+国内不容易下载、需要你事先准备的文件
+  1. Home Assistant 镜像
+     官方：ghcr.io/home-assistant/home-assistant:2026.9.4
+     原因：Registry 能打开，但大层只有约 16～20 KB/s。
+     做法：在网络好的电脑上 docker pull 后 docker save，得到
+           assets/home-assistant-image.tar
+     或者：不放 tar。sources.env 里的 HA_IMAGE 已写成
+           ghcr.1ms.run/home-assistant/home-assistant:2026.9.4
+     不需要在群晖控制面板或 /etc/docker/daemon.json 里再加镜像站。
+     docker pull 会直接访问镜像名中的 ghcr.1ms.run。
+     当前标签 2026.9.4 的摘要：
+           sha256:3e6710a7ab2a61311d9d899b719f6c3657791c63e8f4942cec4ebc42401d6b76
+
+  2. HACS
+     脚本下载 GitHub 最新发布包：
+           https://github.com/hacs/integration/releases/latest/download/hacs.zip
+     国内 NAS 可能下载失败。失败时脚本会提示：
+           关注微信公众号「智能家居报告」，发送关键词 HACS，获取百度云链接。
+     把下载到的 hacs.zip 放到 assets/hacs.zip 后重新运行。
+
+  3. Mosquitto 镜像（只有选择安装、且本机还没有 Broker 时才需要）
+     官方：eclipse-mosquitto
+     原因：Docker Hub 在国内常常很慢，而且不是每台 NAS 都已经装过。
+     脚本会先检查名为 mosquitto 的容器，以及 1883 是否已在监听。
+     已有就复用，不再安装。
+     没有时会询问。选“否”则跳过，Home Assistant 照常安装。
+     选“是”则安装到 /volume1/docker/mosquitto，监听 1883，关闭匿名登录。
+     用户名和密码在运行时输入，不写入 sources.env。
+     镜像可以事先准备：
+           docker pull docker.1ms.run/eclipse-mosquitto:2
+           docker save docker.1ms.run/eclipse-mosquitto:2 -o assets/mosquitto-image.tar
+     或者不放 tar，让脚本按 sources.env 的 MOSQUITTO_IMAGE 拉取。
+     不配置 8883。该端口需要证书，默认安装不打开。
+
+用法
+  1. 确认 sources.env 里的 HACS_URL 是 GitHub 最新发布包地址。
+  2. 不要把 hacs.zip 打进安装包。没有本地文件时，脚本会先尝试 GitHub。
+  3. 上传压缩包到 NAS 并解压
+  4. SSH 登录 NAS：
+       cd /解压后的/ha-nas-install
+       sudo bash install.sh
+  5. 每一步会说明将要做什么。回车继续，s 跳过可选项，q 退出。
+     端口空闲、也没有同名容器时，可以用：sudo bash install.sh --yes
+     --yes 只跳过“回车继续”。端口已被占用，或已有同名容器时，脚本会停下来。
+
+端口
+  容器使用 host 网络，Docker 不能把容器内的端口映射成另一个端口。
+  脚本会按你输入的 HTTP 端口写入 configuration.yaml 的 server_port。
+  反向代理的外部 HTTPS 端口必须和这个 HTTP 端口不同。
+  在自己的电脑上打开 http://群晖局域网IP:端口 。
+  127.0.0.1 指的是浏览器所在的电脑，不是群晖。
+  科学上网或系统代理需要把局域网网段设为直连，否则局域网 IP 可能无法打开。
+
+装完后你还要在网页里做
+  - 用群晖的局域网 IP 和你设置的 HTTP 端口打开页面，创建所有者账户
+  - 如需域名访问：控制面板 → 登录门户 → 高级 → 反向代理，
+    外部 HTTPS 指到 http://127.0.0.1:你的HTTP端口，并启用 WebSocket
+  - 证书继续用现有 Let's Encrypt
+  - HA 里开启多因素认证
+  - 若本机已有或刚刚安装了 Mosquitto：设置 → 设备与服务 → 添加 MQTT，
+    Broker 用 NAS 的 1883。没有安装则跳过这一步
+  - 做一次完整备份
+
+安装失败时清除
+  cd /解压后的/ha-nas-install
+  sudo bash uninstall.sh
+  或直接：sudo bash uninstall.sh --yes
+  会删除 sources.env 里记录的 Home Assistant 容器和目录。
+  只有目录里存在 .ha-nas-install 标记时，才会删除 Mosquitto。
+  原先就存在、且没有安装标记的 Mosquitto 不会删除。
+  群晖反向代理规则不会自动删除。
+
+升级
+  换版本时同时改 HA_VERSION、镜像 tar 或 HA_IMAGE，再运行脚本。
+  脚本发现已有 compose.yaml 会先备份再覆盖。config 目录不会删除。

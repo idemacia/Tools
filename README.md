@@ -8,3 +8,9 @@ Mac 备忘录桌面展示（浮窗 + WidgetKit 小组件）、群晖 Docker 待�
 
 详见 [NotesDesk/README.md](NotesDesk/README.md)。
 
+
+## ha-nas-install
+
+群晖 DSM 上分步安装 Home Assistant Container（可选 HACS、Mosquitto）。
+
+详见 [ha-nas-install/使用说明.txt](ha-nas-install/使用说明.txt)。
